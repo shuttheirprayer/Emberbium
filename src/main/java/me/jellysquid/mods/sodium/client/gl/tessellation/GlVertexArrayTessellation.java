@@ -12,6 +12,11 @@ public class GlVertexArrayTessellation extends GlAbstractTessellation {
         this.array = array;
     }
 
+    @Override
+    protected int getArrayHandle() {
+        return this.array.handle();
+    }
+
     public void init(CommandList commandList) {
         this.bind(commandList);
         this.bindAttributes(commandList);

@@ -57,6 +57,7 @@ public final class StandardOptions {
         public static final ResourceLocation ANIMATE_VISIBLE_TEXTURES = new ResourceLocation(SodiumClientMod.MODID, "animate_only_visible_textures");
         public static final ResourceLocation NO_ERROR_CONTEXT = new ResourceLocation(SodiumClientMod.MODID, "no_error_context");
         public static final ResourceLocation PERSISTENT_MAPPING = new ResourceLocation(SodiumClientMod.MODID, "persistent_mapping");
+        public static final ResourceLocation MODERN_GL_PATHS = new ResourceLocation(SodiumClientMod.MODID, "modern_gl_paths");
         public static final ResourceLocation CPU_FRAMES_AHEAD = new ResourceLocation(SodiumClientMod.MODID, "cpu_render_ahead_limit");
         public static final ResourceLocation TRANSLUCENT_FACE_SORTING = new ResourceLocation(SodiumClientMod.MODID, "translucent_face_sorting");
         public static final ResourceLocation USE_QUAD_NORMALS_FOR_LIGHTING = new ResourceLocation(SodiumClientMod.MODID, "use_quad_normals_for_lighting");
