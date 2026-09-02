@@ -11,6 +11,7 @@ import me.jellysquid.mods.sodium.client.model.light.LightPipeline;
 import me.jellysquid.mods.sodium.client.model.light.LightPipelineProvider;
 import me.jellysquid.mods.sodium.client.model.light.data.QuadLightData;
 import me.jellysquid.mods.sodium.client.model.quad.BakedQuadView;
+import me.jellysquid.mods.sodium.client.model.quad.blender.BlendedColorProvider;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFacing;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadFlags;
 import me.jellysquid.mods.sodium.client.model.quad.properties.ModelQuadOrientation;
@@ -88,6 +89,20 @@ public class BlockRenderer {
 
     private final ChunkColorWriter colorEncoder = ChunkColorWriter.get();
 
+    // Memoises the colour of the block currently being rendered. Every quad in one renderModel()
+    // call shares ctx.world(), ctx.pos() and ctx.state(), and the only non-blended provider that can
+    // reach here is DefaultColorProviders.VanillaAdapter -- ColorProviderRegistry has no way for a
+    // mod to install its own -- whose result then depends on nothing but the tint index, and which
+    // fills all four vertices with one value. So for a model with several quads sharing a tint
+    // index, every call after the first repeats work. BlendedColorProvider colours each vertex from
+    // the quad's geometry and is never memoised.
+    //
+    // A BlockRenderer belongs to one ChunkBuildContext, which belongs to one worker thread, so this
+    // needs no synchronisation.
+    private boolean hasCachedTint;
+    private int cachedTintIndex;
+    private int cachedTintColor;
+
     private final boolean useRenderPassOptimization;
 
     public BlockRenderer(ColorProviderRegistry colorRegistry, LightPipelineProvider lighters) {
@@ -106,6 +121,8 @@ public class BlockRenderer {
      * @param buffers the buffer to output geometry to
      */
     public void renderModel(BlockRenderContext ctx, ChunkBuildBuffers buffers) {
+        this.hasCachedTint = false;
+
         var material = DefaultMaterials.forRenderLayer(ctx.renderLayer());
         var meshBuilder = buffers.get(material);
 
@@ -277,7 +294,21 @@ public class BlockRenderer {
         final int[] vertexColors = this.quadColors;
 
         if (colorProvider != null && quad.hasColor()) {
-            colorProvider.getColors(ctx.world(), ctx.pos(), ctx.state(), quad, vertexColors);
+            boolean cacheable = !(colorProvider instanceof BlendedColorProvider);
+            int tintIndex = quad.getColorIndex();
+
+            if (cacheable && this.hasCachedTint && tintIndex == this.cachedTintIndex) {
+                Arrays.fill(vertexColors, this.cachedTintColor);
+            } else {
+                colorProvider.getColors(ctx.world(), ctx.pos(), ctx.state(), quad, vertexColors);
+
+                if (cacheable) {
+                    this.hasCachedTint = true;
+                    this.cachedTintIndex = tintIndex;
+                    this.cachedTintColor = vertexColors[0];
+                }
+            }
+
             // Force full alpha on all colors
             for(int i = 0; i < vertexColors.length; i++) {
                 vertexColors[i] |= 0xFF000000;
