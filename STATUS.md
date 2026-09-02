@@ -41,7 +41,7 @@ Behaviour:
 | `201967f2` | `TranslucentQuadAnalyzer.getSortState()` copied the quad centers before deciding whether the section needed them, allocating a `float[]` per translucent section per rebuild on the meshing path even for the `NONE` level. The coplanarity test now reads the list's backing array in place. |
 | `000b856d` | `advanced.useModernGlPaths` now defaults to off, and the tooltip says the option is experimental and what it does at each GL level. The port stays in the tree for testing on modern hardware. No serialized key rename, so a config that already has `use_modern_gl_paths=true` keeps it on. |
 | `aa933934` | `BlockRenderer.getVertexColors()` asked the colour provider once per quad, though every quad in a `renderModel()` call shares the same world, position and state. Now memoises the last (tint index, colour) per block. Adapted from au-naturel `834e28e6`, without its per-section hash map. |
-| `PENDING` | Video settings GUI animation pass. Hover, selection, tick boxes, the slider reveal, scrolling and tab switching are eased instead of snapping. Render-layer only -- the addon API is data-level (`OptionPage`/`OptionGroup`/`Option`), and no existing signature changed. |
+| `3e81eb5a` | Video settings GUI animation pass. Hover, selection, tick boxes, the slider reveal, scrolling and tab switching are eased instead of snapping. Render-layer only -- the addon API is data-level (`OptionPage`/`OptionGroup`/`Option`), and no existing signature changed. |
 
 Non-behaviour: the rebrand (`fdfa0a6a`), the vendored ModDevGradle plugin (`714ea9ef`), the
 version anchor (`42a1846f`).
