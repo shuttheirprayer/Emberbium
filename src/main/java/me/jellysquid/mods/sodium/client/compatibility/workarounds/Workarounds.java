@@ -23,7 +23,7 @@ public class Workarounds {
         var workarounds = findNecessaryWorkarounds();
 
         if (!workarounds.isEmpty()) {
-            LOGGER.warn("Embeddium has applied one or more workarounds to prevent crashes or other issues on your system: [{}]",
+            LOGGER.warn("Emberbium has applied one or more workarounds to prevent crashes or other issues on your system: [{}]",
                     workarounds.stream()
                             .map(Enum::name)
                             .collect(Collectors.joining(", ")));

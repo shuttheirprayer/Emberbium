@@ -9,7 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class ConfigMigrator {
-    public static Logger LOGGER = LogManager.getLogger("Embeddium");
+    public static Logger LOGGER = LogManager.getLogger("Emberbium");
 
     /**
      * Tries to migrate the equivalent config file from Rubidium to the Embeddium name if possible.

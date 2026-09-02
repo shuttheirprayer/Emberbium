@@ -21,7 +21,7 @@ import java.util.function.IntSupplier;
  * setup flags. Otherwise, performance degradation or unexpected behavior may occur.
  */
 public class EmbeddiumEarlyWindowHacks {
-    private static final Logger LOGGER = LoggerFactory.getLogger("Embeddium-FMLEarlyWindow");
+    private static final Logger LOGGER = LoggerFactory.getLogger("Emberbium-FMLEarlyWindow");
 
     public static void createEarlyLaunchWindow(IntSupplier width, IntSupplier height) {
         // Load the FML early window implementation
@@ -62,7 +62,7 @@ public class EmbeddiumEarlyWindowHacks {
 
         var modInfo = LoadingModList.get().getModFileById(SodiumClientMod.MODID);
         String ourVersion = modInfo != null ? modInfo.versionString() : "unknown";
-        StartupMessageManager.modLoaderConsumer().ifPresent(c -> c.accept("Embeddium " + ourVersion));
+        StartupMessageManager.modLoaderConsumer().ifPresent(c -> c.accept("Emberbium " + ourVersion));
         ImmediateWindowHandler.acceptGameLayer(Launcher.INSTANCE.findLayerManager().orElseThrow().getLayer(IModuleLayerManager.Layer.GAME).orElseThrow());
 
         // Workaround for Forge bug: make sure windowTick is actually populated before continuing

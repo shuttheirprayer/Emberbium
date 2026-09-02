@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 
 public class TaintDetector {
     private static final String TAINT_MODE = System.getProperty("embeddium.taint_scan");
-    private static final Logger LOGGER = LogManager.getLogger("Embeddium-TaintDetector");
+    private static final Logger LOGGER = LogManager.getLogger("Emberbium-TaintDetector");
 
     private static final ClassConstantPoolParser PARSER = new ClassConstantPoolParser(
             "me/jellysquid/mods/sodium"
@@ -47,7 +47,7 @@ public class TaintDetector {
         }
 
         Executor taintScanner = Executors.newSingleThreadExecutor(task -> {
-           Thread worker = new Thread(task, "Embeddium Mod Analyzer");
+           Thread worker = new Thread(task, "Emberbium Mod Analyzer");
            worker.setPriority(Thread.MIN_PRIORITY);
            worker.setDaemon(true);
            return worker;
@@ -55,7 +55,7 @@ public class TaintDetector {
 
         CompletableFuture.runAsync(() -> {
             Stopwatch watch = Stopwatch.createStarted();
-            LOGGER.info("Scanning for mods that depend on Embeddium code...");
+            LOGGER.info("Scanning for mods that depend on Emberbium code...");
             scanMods();
             watch.stop();
             LOGGER.info("Finished scanning mods in {}", watch);
@@ -66,7 +66,7 @@ public class TaintDetector {
     private static void scanMods() {
         List<Path> classPaths = new ArrayList<>();
         ModFileInfo self = FMLLoader.getLoadingModList().getModFileById("embeddium");
-        Objects.requireNonNull(self, "Embeddium mod file does not exist");
+        Objects.requireNonNull(self, "Emberbium mod file does not exist");
         for (ModFileInfo file : FMLLoader.getLoadingModList().getModFiles()) {
             // Skip scanning files that provide a mod we know and trust
             if (file.getMods().stream().anyMatch(modInfo -> EXCLUDED_MOD_IDS.contains(modInfo.getModId()))) {
@@ -115,7 +115,7 @@ public class TaintDetector {
         }
 
         StringBuilder theResults = new StringBuilder();
-        theResults.append(DISCOVERED_MODS.keySet().size()).append(" mods were found that reference Embeddium internals:\n");
+        theResults.append(DISCOVERED_MODS.keySet().size()).append(" mods were found that reference Emberbium internals:\n");
         DISCOVERED_MODS.asMap().forEach((file, listClass) -> {
             theResults
                     .append("Mod file '").append(file.getFile().getFileName())

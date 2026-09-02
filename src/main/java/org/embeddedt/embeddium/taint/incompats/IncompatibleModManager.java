@@ -21,7 +21,7 @@ public class IncompatibleModManager {
         IModInfo selfInfo = ModLoadingContext.get().getActiveContainer().getModInfo();
         if(ModList.get().isLoaded("lazurite")) {
             event.enqueueWork(() -> {
-                ModLoader.get().addWarning(new ModLoadingWarning(selfInfo, ModLoadingStage.SIDED_SETUP, "Embeddium includes FFAPI support as of 0.3.20, Lazurite should be removed"));
+                ModLoader.get().addWarning(new ModLoadingWarning(selfInfo, ModLoadingStage.SIDED_SETUP, "Emberbium includes FFAPI support as of 0.3.20, Lazurite should be removed"));
             });
         }
         // TODO: Enable

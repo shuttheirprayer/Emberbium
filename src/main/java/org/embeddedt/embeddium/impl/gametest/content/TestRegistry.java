@@ -62,7 +62,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class TestRegistry {
-    public static final Logger LOGGER = LoggerFactory.getLogger("Embeddium/TestSystem");
+    public static final Logger LOGGER = LoggerFactory.getLogger("Emberbium/TestSystem");
 
     private static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, EmbeddiumConstants.MODID);
     private static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES = DeferredRegister.create(ForgeRegistries.BLOCK_ENTITY_TYPES, EmbeddiumConstants.MODID);
@@ -121,7 +121,7 @@ public class TestRegistry {
             var structureManager = event.getServer().getStructureManager();
             StructureTemplate template = structureManager.getOrCreate(EMPTY_TEMPLATE);
             ObfuscationReflectionHelper.setPrivateValue(StructureTemplate.class, template, new Vec3i(9, 9, 9), "size");
-            template.setAuthor("Embeddium");
+            template.setAuthor("Emberbium");
         }
 
         private static boolean hasSeenMainMenu = false;
@@ -177,7 +177,7 @@ public class TestRegistry {
                 if(LATCH.tryAcquire()) {
                     // Liftoff
                     Collection<GameTestInfo> collection = GameTestRunner.runTestBatches(
-                            List.of(new GameTestBatch("Embeddium", GameTestRegistry.getAllTestFunctions(), l -> {}, l -> {})),
+                            List.of(new GameTestBatch("Emberbium", GameTestRegistry.getAllTestFunctions(), l -> {}, l -> {})),
                             new BlockPos(0, -60, 0),
                             Rotation.NONE,
                             event.getServer().overworld(),

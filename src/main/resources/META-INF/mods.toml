@@ -1,21 +1,24 @@
 modLoader="javafml"
 loaderVersion="[47,)"
 license="LGPL-3.0-only"
+issueTrackerURL="https://github.com/misanthropy/emberbium/issues"
 [[mods]]
 modId="embeddium"
 version="${file.jarVersion}"
-displayName="Embeddium"
+displayName="Emberbium"
 logoFile="icon.png"
 description='''
-Embeddium is a fork of Rubidium, a fork of Sodium with patches for Forge
+Emberbium is a performance-focused fork of Embeddium, which is a Forge port of Sodium.
+
+The mod id remains "embeddium" so that existing addons (Oculus, Embeddium Extra, and others) continue to work unmodified.
 '''
-credits="embeddedt, NanoLive, CaffeineMC"
-authors="embeddedt"
+credits="embeddedt, Asek3, NanoLive, JellySquid & CaffeineMC"
+authors="Misanthropy"
 
 [[mods]]
 modId = "rubidium"
 version = "0.7.1"
-displayName = "Rubidium (Embeddium)"
+displayName = "Rubidium (Emberbium)"
 description = '''
 Stub, to allow mods detecting Rubidium to function as expected.
 '''

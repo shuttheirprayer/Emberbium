@@ -21,7 +21,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class CCLCompat {
-    private static final Logger LOGGER = LoggerFactory.getLogger("Embeddium-CCL");
+    private static final Logger LOGGER = LoggerFactory.getLogger("Emberbium-CCL");
 	private static Map<Holder<Block>, ICCBlockRenderer> customBlockRenderers;
     private static Map<Holder<Fluid>, ICCBlockRenderer> customFluidRenderers;
     private static List<ICCBlockRenderer> customGlobalRenderers;

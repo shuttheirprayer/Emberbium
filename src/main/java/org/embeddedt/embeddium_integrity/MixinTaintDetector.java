@@ -42,7 +42,7 @@ public class MixinTaintDetector implements IExtension {
      * about mixins before they are applied.
      */
     private static final MethodHandle GET_MIXINS_ON_CLASS_INFO;
-    private static final Logger LOGGER = LoggerFactory.getLogger("Embeddium-MixinTaintDetector");
+    private static final Logger LOGGER = LoggerFactory.getLogger("Emberbium-MixinTaintDetector");
     private static final EnforceLevel DEFAULT_ENFORCE_LEVEL = EnforceLevel.WARN;
 
     /**
@@ -236,13 +236,13 @@ public class MixinTaintDetector implements IExtension {
                 var illegalMixinMap = filterInvalidMixins(mixins);
                 if(!illegalMixinMap.isEmpty()) {
                     if(TAINTING_MODS.isEmpty()) {
-                        LOGGER.error("Mod mixin into Embeddium internals detected. This instance is now tainted. The Embeddium team does not provide any guarantee of support for issues encountered while such mods are installed.");
+                        LOGGER.error("Mod mixin into Emberbium internals detected. This instance is now tainted. The Emberbium team does not provide any guarantee of support for issues encountered while such mods are installed.");
                     }
                     TAINTING_MODS.addAll(illegalMixinMap.keySet());
                     var mixinList = "[" + String.join(", ", illegalMixinMap.keySet()) + "]";
-                    LOGGER.warn("Mod(s) {} are modifying Embeddium class {}, which may cause instability.", mixinList, name);
+                    LOGGER.warn("Mod(s) {} are modifying Emberbium class {}, which may cause instability.", mixinList, name);
                     if(ENFORCE_LEVEL == EnforceLevel.CRASH) {
-                        throw new IllegalStateException("Mods " + mixinList + " are mixing into internal Embeddium class " + name + ". This has potential to destabilize the game, and the taint detector is currently configured to crash.");
+                        throw new IllegalStateException("Mods " + mixinList + " are mixing into internal Emberbium class " + name + ". This has potential to destabilize the game, and the taint detector is currently configured to crash.");
                     }
                 }
             }

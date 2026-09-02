@@ -5,7 +5,6 @@ plugins {
     id("idea")
     id("net.neoforged.moddev.legacy") version("2.0.63-beta-pr-118-legacy")
     id("maven-publish")
-    id("me.modmuss50.mod-publish-plugin") version("0.7.4")
     id("embeddium-fabric-remapper")
 }
 
@@ -21,7 +20,7 @@ tasks.withType<JavaCompile> {
 
 version = getModVersion()
 group = "maven_group"()
-println("Embeddium: $version")
+println("Emberbium: $version")
 
 base {
     archivesName = "archives_base_name"()
@@ -217,43 +216,6 @@ publishing {
     repositories {
         maven("file://${System.getenv("local_maven")}")
     }
-}
-
-publishMods {
-    file = tasks.reobfJar.get().archiveFile
-    changelog = "https://github.com/embeddedt/embeddium/wiki/Changelog"
-    type = STABLE
-    modLoaders.add("forge")
-    modLoaders.add("neoforge")
-
-    curseforge {
-        projectId = "908741"
-        accessToken = providers.environmentVariable("CURSEFORGE_TOKEN")
-        minecraftVersions.add("minecraft_version"())
-
-        incompatible {
-            slug = "rubidium"
-        }
-
-        incompatible {
-            slug = "textrues-embeddium-options"
-        }
-    }
-    modrinth {
-        projectId = "sk9rgfiA"
-        accessToken = providers.environmentVariable("MODRINTH_TOKEN")
-        minecraftVersions.add("minecraft_version"())
-
-        incompatible {
-            slug = "rubidium"
-        }
-
-        incompatible {
-            slug = "textrues-embeddium-options"
-        }
-    }
-
-    displayName = "[${"minecraft_version"()}] Embeddium ${"mod_version"()}"
 }
 
 fun getModVersion(): String {
