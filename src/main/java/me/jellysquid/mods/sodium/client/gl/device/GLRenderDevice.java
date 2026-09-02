@@ -2,7 +2,10 @@ package me.jellysquid.mods.sodium.client.gl.device;
 
 import me.jellysquid.mods.sodium.client.gl.array.GlVertexArray;
 import me.jellysquid.mods.sodium.client.gl.buffer.*;
+import me.jellysquid.mods.sodium.client.gl.functions.BufferDataFunctions;
+import me.jellysquid.mods.sodium.client.gl.functions.BufferStorageFunctions;
 import me.jellysquid.mods.sodium.client.gl.functions.DeviceFunctions;
+import me.jellysquid.mods.sodium.client.gl.functions.VertexAttributeFunctions;
 import me.jellysquid.mods.sodium.client.gl.state.GlStateTracker;
 import me.jellysquid.mods.sodium.client.gl.sync.GlFence;
 import me.jellysquid.mods.sodium.client.gl.tessellation.*;
@@ -13,10 +16,9 @@ import java.nio.ByteBuffer;
 
 public class GLRenderDevice implements RenderDevice {
     private final GlStateTracker stateTracker = new GlStateTracker();
+    private final DeviceFunctions functions = new DeviceFunctions(this);
     private final CommandList commandList = new ImmediateCommandList(this.stateTracker);
     private final DrawCommandList drawCommandList = new ImmediateDrawCommandList();
-
-    private final DeviceFunctions functions = new DeviceFunctions(this);
 
     private boolean isActive;
     private GlTessellation activeTessellation;
@@ -68,9 +70,20 @@ public class GLRenderDevice implements RenderDevice {
 
     private class ImmediateCommandList implements CommandList {
         private final GlStateTracker stateTracker;
+        private final BufferDataFunctions bufferDataFunctions;
+        private final BufferStorageFunctions bufferStorageFunctions;
+        private final VertexAttributeFunctions vertexAttributeFunctions;
 
         private ImmediateCommandList(GlStateTracker stateTracker) {
             this.stateTracker = stateTracker;
+            this.bufferDataFunctions = GLRenderDevice.this.functions.getBufferDataFunctions();
+            this.bufferStorageFunctions = GLRenderDevice.this.functions.getBufferStorageFunctions();
+            this.vertexAttributeFunctions = GLRenderDevice.this.functions.getVertexAttributeFunctions();
+        }
+
+        @Override
+        public VertexAttributeFunctions getVertexAttributeFunctions() {
+            return this.vertexAttributeFunctions;
         }
 
         @Override
@@ -82,18 +95,24 @@ public class GLRenderDevice implements RenderDevice {
 
         @Override
         public void uploadData(GlMutableBuffer glBuffer, ByteBuffer byteBuffer, GlBufferUsage usage) {
-            this.bindBuffer(GlBufferTarget.ARRAY_BUFFER, glBuffer);
-
-            GL20C.glBufferData(GlBufferTarget.ARRAY_BUFFER.getTargetParameter(), byteBuffer, usage.getId());
+            if (this.bufferDataFunctions.isDSA()) {
+                this.bufferDataFunctions.bufferData(glBuffer.handle(), byteBuffer, usage);
+            } else {
+                this.bindBuffer(GlBufferTarget.ARRAY_BUFFER, glBuffer);
+                GL20C.glBufferData(GlBufferTarget.ARRAY_BUFFER.getTargetParameter(), byteBuffer, usage.getId());
+            }
             glBuffer.setSize(byteBuffer.remaining());
         }
 
         @Override
         public void copyBufferSubData(GlBuffer src, GlBuffer dst, long readOffset, long writeOffset, long bytes) {
-            this.bindBuffer(GlBufferTarget.COPY_READ_BUFFER, src);
-            this.bindBuffer(GlBufferTarget.COPY_WRITE_BUFFER, dst);
-
-            GL31C.glCopyBufferSubData(GL31C.GL_COPY_READ_BUFFER, GL31C.GL_COPY_WRITE_BUFFER, readOffset, writeOffset, bytes);
+            if (this.bufferDataFunctions.isDSA()) {
+                this.bufferDataFunctions.copyBufferSubData(src.handle(), dst.handle(), readOffset, writeOffset, bytes);
+            } else {
+                this.bindBuffer(GlBufferTarget.COPY_READ_BUFFER, src);
+                this.bindBuffer(GlBufferTarget.COPY_WRITE_BUFFER, dst);
+                GL31C.glCopyBufferSubData(GL31C.GL_COPY_READ_BUFFER, GL31C.GL_COPY_WRITE_BUFFER, readOffset, writeOffset, bytes);
+            }
         }
 
         @Override
@@ -112,9 +131,12 @@ public class GLRenderDevice implements RenderDevice {
 
         @Override
         public void allocateStorage(GlMutableBuffer buffer, long bufferSize, GlBufferUsage usage) {
-            this.bindBuffer(GlBufferTarget.ARRAY_BUFFER, buffer);
-
-            GL20C.glBufferData(GlBufferTarget.ARRAY_BUFFER.getTargetParameter(), bufferSize, usage.getId());
+            if (this.bufferDataFunctions.isDSA()) {
+                this.bufferDataFunctions.bufferData(buffer.handle(), bufferSize, usage);
+            } else {
+                this.bindBuffer(GlBufferTarget.ARRAY_BUFFER, buffer);
+                GL20C.glBufferData(GlBufferTarget.ARRAY_BUFFER.getTargetParameter(), bufferSize, usage.getId());
+            }
             buffer.setSize(bufferSize);
         }
 
@@ -170,7 +192,6 @@ public class GLRenderDevice implements RenderDevice {
                 throw new IllegalStateException("Tried to map mutable buffer as persistent");
             }
 
-            // TODO: speed this up?
             if (buffer instanceof GlImmutableBuffer) {
                 EnumBitField<GlBufferStorageFlags> bufferFlags = ((GlImmutableBuffer) buffer).getFlags();
 
@@ -187,9 +208,13 @@ public class GLRenderDevice implements RenderDevice {
                 }
             }
 
-            this.bindBuffer(GlBufferTarget.ARRAY_BUFFER, buffer);
-
-            ByteBuffer buf = GL32C.glMapBufferRange(GlBufferTarget.ARRAY_BUFFER.getTargetParameter(), offset, length, flags.getBitField());
+            ByteBuffer buf;
+            if (this.bufferDataFunctions.isDSA()) {
+                buf = this.bufferDataFunctions.mapBufferRange(buffer.handle(), offset, length, flags);
+            } else {
+                this.bindBuffer(GlBufferTarget.ARRAY_BUFFER, buffer);
+                buf = GL32C.glMapBufferRange(GlBufferTarget.ARRAY_BUFFER.getTargetParameter(), offset, length, flags.getBitField());
+            }
 
             if (buf == null) {
                 throw new RuntimeException("Failed to map buffer");
@@ -208,8 +233,12 @@ public class GLRenderDevice implements RenderDevice {
 
             GlBuffer buffer = map.getBufferObject();
 
-            this.bindBuffer(GlBufferTarget.ARRAY_BUFFER, buffer);
-            GL32C.glUnmapBuffer(GlBufferTarget.ARRAY_BUFFER.getTargetParameter());
+            if (this.bufferDataFunctions.isDSA()) {
+                this.bufferDataFunctions.unmapBuffer(buffer.handle());
+            } else {
+                this.bindBuffer(GlBufferTarget.ARRAY_BUFFER, buffer);
+                GL32C.glUnmapBuffer(GlBufferTarget.ARRAY_BUFFER.getTargetParameter());
+            }
 
             buffer.setActiveMapping(null);
             map.dispose();
@@ -221,8 +250,12 @@ public class GLRenderDevice implements RenderDevice {
 
             GlBuffer buffer = map.getBufferObject();
 
-            this.bindBuffer(GlBufferTarget.COPY_READ_BUFFER, buffer);
-            GL32C.glFlushMappedBufferRange(GlBufferTarget.COPY_READ_BUFFER.getTargetParameter(), offset, length);
+            if (this.bufferDataFunctions.isDSA()) {
+                this.bufferDataFunctions.flushMappedBufferRange(buffer.handle(), offset, length);
+            } else {
+                this.bindBuffer(GlBufferTarget.COPY_READ_BUFFER, buffer);
+                GL32C.glFlushMappedBufferRange(GlBufferTarget.COPY_READ_BUFFER.getTargetParameter(), offset, length);
+            }
         }
 
         @Override
@@ -245,9 +278,12 @@ public class GLRenderDevice implements RenderDevice {
         public GlImmutableBuffer createImmutableBuffer(long bufferSize, EnumBitField<GlBufferStorageFlags> flags) {
             GlImmutableBuffer buffer = new GlImmutableBuffer(flags);
 
-            this.bindBuffer(GlBufferTarget.ARRAY_BUFFER, buffer);
-            GLRenderDevice.this.functions.getBufferStorageFunctions()
-                    .createBufferStorage(GlBufferTarget.ARRAY_BUFFER, bufferSize, flags);
+            if (this.bufferStorageFunctions.isDSA()) {
+                this.bufferStorageFunctions.createBufferStorage(buffer.handle(), bufferSize, flags);
+            } else {
+                this.bindBuffer(GlBufferTarget.ARRAY_BUFFER, buffer);
+                this.bufferStorageFunctions.createBufferStorage(GlBufferTarget.ARRAY_BUFFER, bufferSize, flags);
+            }
 
             return buffer;
         }
