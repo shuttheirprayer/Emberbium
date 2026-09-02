@@ -66,7 +66,7 @@ public class TranslucentQuadAnalyzer {
         }
     }
 
-    private boolean areAllQuadsOnSamePlane(float[] centerArray) {
+    private boolean areAllQuadsOnSamePlane(float[] centerArray, int length) {
         // Let globalNormal = (a, b, c). Any plane with this normal vector is denoted by the equation ax + by + cz = d,
         // for some real number d.
         //
@@ -81,7 +81,7 @@ public class TranslucentQuadAnalyzer {
 
         float a = globalNormal.x, b = globalNormal.y, c = globalNormal.z;
         float d = a * centerArray[0] + b * centerArray[1] + c * centerArray[2];
-        int nQuads = centerArray.length / 3;
+        int nQuads = length / 3;
         for(int quadIdx = 1; quadIdx < nQuads; quadIdx++) {
             int centerOff = quadIdx * 3;
             float candidateD = a * centerArray[centerOff + 0] + b * centerArray[centerOff + 1] + c * centerArray[centerOff + 2];
@@ -101,8 +101,6 @@ public class TranslucentQuadAnalyzer {
         } else {
             Level sortLevel;
 
-            var centerArray = quadCenters.toArray(new float[0]);
-
             // Figure out what sort level is required
             if(hasDistinctNormals) {
                 // Must use dynamic sort
@@ -110,10 +108,14 @@ public class TranslucentQuadAnalyzer {
             } else {
                 // If all quads are on the same plane we can use NONE sorting, otherwise we need to sort statically to put
                 // them in the right order
-                sortLevel = areAllQuadsOnSamePlane(centerArray) ? Level.NONE : Level.STATIC;
+                // The plane test only reads the centers, so hand it the list's backing array rather than a copy.
+                // elements() may be longer than the list, hence the explicit length.
+                sortLevel = areAllQuadsOnSamePlane(quadCenters.elements(), quadCenters.size()) ? Level.NONE : Level.STATIC;
             }
 
-            SortState finalState = sortLevel == Level.NONE ? SortState.NONE : new SortState(sortLevel, centerArray, cloneBits(normalSigns), new Vector3f(globalNormal));
+            // Only a state that keeps the centers needs its own copy of them; NONE discards them, and
+            // the list is cleared (and reused for the next section) on the way out.
+            SortState finalState = sortLevel == Level.NONE ? SortState.NONE : new SortState(sortLevel, quadCenters.toArray(new float[0]), cloneBits(normalSigns), new Vector3f(globalNormal));
             clear();
             return finalState;
         }
