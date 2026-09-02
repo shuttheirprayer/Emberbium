@@ -38,15 +38,21 @@ Behaviour:
 | `d9018065` | `collectChunkBuildResults()` aborted its drain at the first failed chunk build, stranding every output already polled. In `destroy()` it also skipped GL and off-heap teardown entirely, leaking region storage that has no reclaimer behind it. |
 | `7ceb626f` | Ported DSA / modern GL buffer paths from au-naturel behind `advanced.useModernGlPaths`, default on. **Never benchmarked.** |
 | `024cab76` | Reverted two changes that were made on a wrong diagnosis. |
+| `201967f2` | `TranslucentQuadAnalyzer.getSortState()` copied the quad centers before deciding whether the section needed them, allocating a `float[]` per translucent section per rebuild on the meshing path even for the `NONE` level. The coplanarity test now reads the list's backing array in place. |
 
 Non-behaviour: the rebrand (`fdfa0a6a`), the vendored ModDevGradle plugin (`714ea9ef`), the
 version anchor (`42a1846f`).
 
-`checks/DrainCheck.java` covers the drain logic in `d9018065`:
+`checks/` holds standalone assertion checks for logic that a real instance is needed to
+exercise. Both are plain `javac`, no framework:
 
 ```
 javac checks/DrainCheck.java -d /tmp && java -ea -cp /tmp DrainCheck
+javac checks/CoplanarCheck.java -d /tmp && java -ea -cp /tmp CoplanarCheck
 ```
+
+`DrainCheck` covers the drain logic in `d9018065`; `CoplanarCheck` covers the length handling
+and the allocation decision in `201967f2`.
 
 ## Open: Complementary shader artifacts
 
@@ -116,13 +122,24 @@ Two latent traps noticed while auditing, neither reachable today, neither patche
   that *some* entry is dynamic. Safe only because `TRANSLUCENT` is the sole `isSorted()` pass, so the
   map never holds more than one entry.
 
+### Translucency sorting retention — one allocation removed, no leak (2026-09-03)
+
+`RenderSection.delete()` does not clear `translucencySortStates`, and does not need to. By the time
+it runs, `onSectionRemoved` has already dropped the section from `sectionByPosition` and nulled
+`region.sections[index]`, so the section and its `float[]` are unreachable and the GC takes them.
+The only place a disposed section lingers is a `rebuildLists` queue, which `submitRebuildTasks`
+drains and discards every frame.
+
+The `float[]` a `DYNAMIC` state keeps is not retention either — it is the input to every later
+resort. `compactForStorage()` correctly drops it for `STATIC`, whose sort already happened during
+meshing.
+
+What was real is the allocation, fixed at `201967f2`. See the commit message.
+
 ## Next
 
-1. Translucency sorting retention — `SortState` keeps a `float[]` per dynamic-sort section and
-   `compactForStorage()` only nulls it for `STATIC`. Check `RenderSection.delete()` clears them.
-   Also `getSortState()` allocates on the meshing path via `toArray(new float[0])`.
-2. Benchmark the DSA port with spark or delete it. It has been on by default and unmeasured.
-3. Report the stale `mixin.env.refMapRemappingFile` path upstream — it points at a ForgeGradle
+1. Benchmark the DSA port with spark or delete it. It has been on by default and unmeasured.
+2. Report the stale `mixin.env.refMapRemappingFile` path upstream — it points at a ForgeGradle
    path ModDevGradle never creates, left over from the MDG migration in `151d121e`.
 
 Declined deliberately: merging Xenon's `extras` or options GUI (duplicates Embeddium Extra and
