@@ -37,7 +37,20 @@ public class GlFence {
 
     public void sync(long timeout) {
         this.checkDisposed();
-        GL32C.glWaitSync(this.id, GL32C.GL_SYNC_FLUSH_COMMANDS_BIT, timeout);
+
+        // glWaitSync only blocks the GPU, returns immediately on the CPU, and per spec
+        // requires GL_TIMEOUT_IGNORED -- any other timeout raises GL_INVALID_VALUE. A fence
+        // is waited on precisely so the caller can reuse or unmap memory the GPU was still
+        // reading, which needs the client-side wait.
+        int result = GL32C.glClientWaitSync(this.id, GL32C.GL_SYNC_FLUSH_COMMANDS_BIT, timeout);
+
+        // GL_ALREADY_SIGNALED and GL_CONDITION_SATISFIED are the success cases. The other two
+        // mean the GPU may still be reading, so they must not be reported as a completed wait.
+        if (result == GL32C.GL_WAIT_FAILED) {
+            throw new RuntimeException("glClientWaitSync failed (GL_WAIT_FAILED)");
+        } else if (result == GL32C.GL_TIMEOUT_EXPIRED) {
+            throw new RuntimeException("Fence was not signalled within the timeout");
+        }
     }
 
     public void delete() {
