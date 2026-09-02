@@ -73,8 +73,16 @@ Ruled out by testing:
   is the only `createTessellation` call site.
 
 **The one test never run:** build from `upstream-base-dee0ebd` and load that with Complementary.
-Artifacts there means an upstream regression among the 73 commits since 0.3.31 and nothing to do
-with this fork; artifacts absent means it is in the four changes above.
+Artifacts there means an upstream regression between 0.3.31 and this base, and nothing to do with
+this fork; artifacts absent means it is in the four changes above.
+
+That search space is **19 commits** (`87d1a75a..upstream-base-dee0ebd`), not the 73 recorded here
+earlier -- 73 is the distance from `0263cc2f`, which is 0.3.24 and what `base_mc_version_commit`
+points at, not the published release. Of the 19, twelve touch no runtime code at all (build system,
+CI, docs, and a move-then-revert pair of the mixin sourceset that nets to zero). The candidates for
+a geometry artifact are `170a1c1a` (routes a quad to a different render pass based on its texture),
+`496c59e4` plus its follow-up `28ebce18` (defers BakedQuad flag and normal computation), and
+`48950030` (implements the getQuads extension on SimpleBakedModel).
 
 A local repro is not available. The dev environment uses official mappings and Oculus ships an
 SRG refmap, so it dies at `@Shadow field f_117950_ was not located in the target class
