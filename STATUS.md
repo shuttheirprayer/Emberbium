@@ -40,6 +40,7 @@ Behaviour:
 | `024cab76` | Reverted two changes that were made on a wrong diagnosis. |
 | `201967f2` | `TranslucentQuadAnalyzer.getSortState()` copied the quad centers before deciding whether the section needed them, allocating a `float[]` per translucent section per rebuild on the meshing path even for the `NONE` level. The coplanarity test now reads the list's backing array in place. |
 | `000b856d` | `advanced.useModernGlPaths` now defaults to off, and the tooltip says the option is experimental and what it does at each GL level. The port stays in the tree for testing on modern hardware. No serialized key rename, so a config that already has `use_modern_gl_paths=true` keeps it on. |
+| `aa933934` | `BlockRenderer.getVertexColors()` asked the colour provider once per quad, though every quad in a `renderModel()` call shares the same world, position and state. Now memoises the last (tint index, colour) per block. Adapted from au-naturel `834e28e6`, without its per-section hash map. |
 
 Non-behaviour: the rebrand (`fdfa0a6a`), the vendored ModDevGradle plugin (`714ea9ef`), the
 version anchor (`42a1846f`).
@@ -50,10 +51,11 @@ exercise. Both are plain `javac`, no framework:
 ```
 javac checks/DrainCheck.java -d /tmp && java -ea -cp /tmp DrainCheck
 javac checks/CoplanarCheck.java -d /tmp && java -ea -cp /tmp CoplanarCheck
+javac checks/TintMemoCheck.java -d /tmp && java -ea -cp /tmp TintMemoCheck
 ```
 
-`DrainCheck` covers the drain logic in `d9018065`; `CoplanarCheck` covers the length handling
-and the allocation decision in `201967f2`.
+`DrainCheck` covers the drain logic in `d9018065`; `CoplanarCheck` the length handling and the
+allocation decision in `201967f2`; `TintMemoCheck` the memo invariants in `aa933934`.
 
 ## Open: Complementary shader artifacts
 
@@ -136,6 +138,48 @@ resort. `compactForStorage()` correctly drops it for `STATIC`, whose sort alread
 meshing.
 
 What was real is the allocation, fixed at `201967f2`. See the commit message.
+
+## Surveyed: the other forks
+
+Read 2026-09-03 from the `xenon` and `aunaturel` remotes. Nothing further is worth taking; do not
+redo this survey without a reason.
+
+**Xenon (`xenon/20.1/forge`)** — last commit 2024-09-24, merge base `496c59e4`, far behind this
+base. Eight non-merge commits: the rebrand, package renames, its own options GUI (`Dim2i`,
+`FlatButtonWidget`), and the `extras` package — leaf culling, frametime graph, entity distance
+culling. All already declined. Its only renderer edits are the hooks for the aggressive leaf
+culling. It also "fixed" the gametest class-loading problem by commenting the registration out,
+where `7cbb5351` removes the ServiceLoader entry properly.
+
+**Au Naturel (`aunaturel/main`)** — alive, same `0.3.31` base anchor. 24 commits, 66 files differ
+(+1867/-490), but only six files are new, so it is mostly deep edits to shared files, and those
+edits are one interlocking body of work: multi-pass terrain visibility, a rewritten `GlBufferArena`
+with a buffer pool and 64-bit offsets, and camera-weighted chunk build prioritisation.
+
+The trap is that its recent commits read like cherry-pickable bugfixes and are not — they fix its
+own code:
+
+| Commit | Fixes | Applies here |
+|---|---|---|
+| `3b8fff87` "nighttime lighting too bright" | an `encodeLight` offset its own `7b1dec30` added | No — `CompactChunkVertex` already writes `vertex.light` |
+| `9fec9cbe` "section-vs-block coordinate mismatch" | its own `ChunkJobPriority` | No — no such class here |
+| `1ec3cc6a` "arena pool lifecycle" | the buffer pool its own `7b1dec30` added | No — this `GlBufferArena` has no pool |
+
+Taken: the colour cache idea, in simplified form, at `aa933934`.
+
+Considered and not taken:
+
+- `7c2a3ec2` configurable block-entity render distance. Self-contained, but duplicates Embeddium
+  Extra and TexTrue's, which is why Xenon's entity culling was declined.
+- `56b6c78f` pre-sizing two staging queues. Two characters, no measurable payoff after the first
+  frames.
+- The `DefaultChunkRenderer` half of `e3ec533a`, a long index-pointer mask. Does not port: its
+  `0xFFFFFFFFFFFFFFFFL` assumes au-naturel's 64-bit offsets, and against this tree's `int` offsets
+  it still sign-extends. The correct literal here is `0xFFFFFFFFL`, and it is unreachable without a
+  2 GB index arena in one region.
+
+`upstream/20.1/forge` is still at `dee0ebd`, this fork's base, so there is nothing to pull from
+upstream either.
 
 ## Next
 
