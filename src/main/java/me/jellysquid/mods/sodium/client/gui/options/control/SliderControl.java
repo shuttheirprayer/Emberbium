@@ -7,6 +7,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
+import org.embeddedt.embeddium.gui.animation.Animation;
 import org.apache.commons.lang3.Validate;
 
 public class SliderControl implements Control<Integer> {
@@ -59,6 +60,8 @@ public class SliderControl implements Control<Integer> {
 
         private boolean sliderHeld;
 
+        private final Animation reveal = new Animation(60.0f, 0.0f);
+
         public Button(Option<Integer> option, Dim2i dim, int min, int max, int interval, ControlValueFormatter formatter) {
             super(option, dim);
 
@@ -77,14 +80,20 @@ public class SliderControl implements Control<Integer> {
         public void render(GuiGraphics drawContext, int mouseX, int mouseY, float delta) {
             super.render(drawContext, mouseX, mouseY, delta);
 
-            if (this.option.isAvailable() && (this.hovered || this.isFocused())) {
-                this.renderSlider(drawContext);
-            } else {
-                this.renderStandaloneValue(drawContext);
+            // The row swapped instantly between the bare value and the full slider. Cross-fade the
+            // two instead: they occupy the same box, so one fades out as the other fades in.
+            float shown = this.reveal.towards(this.option.isAvailable() && (this.hovered || this.isFocused()));
+
+            if (shown < 1.0f) {
+                this.renderStandaloneValue(drawContext, 1.0f - shown);
+            }
+
+            if (shown > 0.0f) {
+                this.renderSlider(drawContext, shown);
             }
         }
 
-        private void renderStandaloneValue(GuiGraphics drawContext) {
+        private void renderStandaloneValue(GuiGraphics drawContext, float alpha) {
             int sliderX = this.sliderBounds.getX();
             int sliderY = this.sliderBounds.getY();
             int sliderWidth = this.sliderBounds.getWidth();
@@ -93,10 +102,10 @@ public class SliderControl implements Control<Integer> {
             Component label = this.formatter.format(this.option.getValue());
             int labelWidth = this.font.width(label);
 
-            this.drawString(drawContext, label, sliderX + sliderWidth - labelWidth, sliderY + (sliderHeight / 2) - 4, 0xFFFFFFFF);
+            this.drawString(drawContext, label, sliderX + sliderWidth - labelWidth, sliderY + (sliderHeight / 2) - 4, Animation.scaleAlpha(0xFFFFFFFF, alpha));
         }
 
-        private void renderSlider(GuiGraphics drawContext) {
+        private void renderSlider(GuiGraphics drawContext, float alpha) {
             int sliderX = this.sliderBounds.getX();
             int sliderY = this.sliderBounds.getY();
             int sliderWidth = this.sliderBounds.getWidth();
@@ -109,14 +118,22 @@ public class SliderControl implements Control<Integer> {
             int thumbX = (int) (sliderX + thumbOffset - THUMB_WIDTH);
             int trackY = (int) (sliderY + (sliderHeight / 2f) - ((double) TRACK_HEIGHT / 2));
 
-            this.drawRect(drawContext, thumbX, sliderY, thumbX + (THUMB_WIDTH * 2), sliderY + sliderHeight, 0xFFFFFFFF);
-            this.drawRect(drawContext, sliderX, trackY, sliderX + sliderWidth, trackY + TRACK_HEIGHT, 0xFFFFFFFF);
+            int color = Animation.scaleAlpha(0xFFFFFFFF, alpha);
+
+            // The track wipes out from the thumb as the slider appears, so it draws the eye to the
+            // handle rather than snapping a full-width line into place.
+            float wipe = Animation.smoothstep(alpha);
+            int trackLeft = Math.round(thumbX + THUMB_WIDTH - (thumbX + THUMB_WIDTH - sliderX) * wipe);
+            int trackRight = Math.round(thumbX + THUMB_WIDTH + ((sliderX + sliderWidth) - (thumbX + THUMB_WIDTH)) * wipe);
+
+            this.drawRect(drawContext, thumbX, sliderY, thumbX + (THUMB_WIDTH * 2), sliderY + sliderHeight, color);
+            this.drawRect(drawContext, trackLeft, trackY, trackRight, trackY + TRACK_HEIGHT, color);
 
             String label = this.formatter.format(this.getIntValue()).getString();
 
             int labelWidth = this.font.width(label);
 
-            this.drawString(drawContext, label, sliderX - labelWidth - 6, sliderY + (sliderHeight / 2) - 4, 0xFFFFFFFF);
+            this.drawString(drawContext, label, sliderX - labelWidth - 6, sliderY + (sliderHeight / 2) - 4, color);
         }
 
         public int getIntValue() {

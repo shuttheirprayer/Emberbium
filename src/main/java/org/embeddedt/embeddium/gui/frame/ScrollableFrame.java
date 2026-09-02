@@ -127,7 +127,10 @@ public class ScrollableFrame extends AbstractFrame {
         if(component == null) {
             return coord;
         } else {
-            return coord + (component.getOffset() * (negate ? -1 : 1));
+            // The eased position, not the target: rendering and hit-testing both go through here,
+            // so using the target would put the cursor out of step with what is on screen while a
+            // scroll is still settling.
+            return coord + (component.getRenderOffset() * (negate ? -1 : 1));
         }
     }
 

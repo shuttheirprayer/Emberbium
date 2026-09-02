@@ -9,6 +9,7 @@ import net.minecraft.client.gui.ComponentPath;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.navigation.FocusNavigationEvent;
 import net.minecraft.client.gui.navigation.ScreenRectangle;
+import org.embeddedt.embeddium.gui.animation.Animation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -18,6 +19,8 @@ public class ControlElement<T> extends AbstractWidget {
     protected final Dim2i dim;
 
     private @NotNull FlatButtonWidget.Style style = FlatButtonWidget.Style.defaults();
+
+    private final Animation hoverFade = new Animation(55.0f, 0.0f);
 
     public ControlElement(Option<T> option, Dim2i dim) {
         this.option = option;
@@ -45,8 +48,11 @@ public class ControlElement<T> extends AbstractWidget {
 
         this.hovered = this.dim.containsCursor(mouseX, mouseY);
 
-        this.drawRect(drawContext, this.dim.x(), this.dim.y(), this.dim.getLimitX(), this.dim.getLimitY(), this.hovered ? style.bgHovered : style.bgDefault);
-        this.drawString(drawContext, label, this.dim.x() + 6, this.dim.getCenterY() - 4, style.textDefault);
+        float hover = this.hoverFade.towards(this.hovered);
+
+        this.drawRect(drawContext, this.dim.x(), this.dim.y(), this.dim.getLimitX(), this.dim.getLimitY(), Animation.lerpColor(style.bgDefault, style.bgHovered, hover));
+        // Hovering also nudges the label in from the edge, which reads as the row lifting.
+        this.drawString(drawContext, label, this.dim.x() + 6 + Math.round(2.0f * Animation.smoothstep(hover)), this.dim.getCenterY() - 4, style.textDefault);
 
         if (this.isFocused()) {
             this.drawBorder(drawContext, this.dim.x(), this.dim.y(), this.dim.getLimitX(), this.dim.getLimitY(), -1);

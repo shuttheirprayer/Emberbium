@@ -41,6 +41,7 @@ Behaviour:
 | `201967f2` | `TranslucentQuadAnalyzer.getSortState()` copied the quad centers before deciding whether the section needed them, allocating a `float[]` per translucent section per rebuild on the meshing path even for the `NONE` level. The coplanarity test now reads the list's backing array in place. |
 | `000b856d` | `advanced.useModernGlPaths` now defaults to off, and the tooltip says the option is experimental and what it does at each GL level. The port stays in the tree for testing on modern hardware. No serialized key rename, so a config that already has `use_modern_gl_paths=true` keeps it on. |
 | `aa933934` | `BlockRenderer.getVertexColors()` asked the colour provider once per quad, though every quad in a `renderModel()` call shares the same world, position and state. Now memoises the last (tint index, colour) per block. Adapted from au-naturel `834e28e6`, without its per-section hash map. |
+| `PENDING` | Video settings GUI animation pass. Hover, selection, tick boxes, the slider reveal, scrolling and tab switching are eased instead of snapping. Render-layer only -- the addon API is data-level (`OptionPage`/`OptionGroup`/`Option`), and no existing signature changed. |
 
 Non-behaviour: the rebrand (`fdfa0a6a`), the vendored ModDevGradle plugin (`714ea9ef`), the
 version anchor (`42a1846f`).
@@ -52,10 +53,50 @@ exercise. Both are plain `javac`, no framework:
 javac checks/DrainCheck.java -d /tmp && java -ea -cp /tmp DrainCheck
 javac checks/CoplanarCheck.java -d /tmp && java -ea -cp /tmp CoplanarCheck
 javac checks/TintMemoCheck.java -d /tmp && java -ea -cp /tmp TintMemoCheck
+javac checks/AnimationCheck.java -d /tmp && java -ea -cp /tmp AnimationCheck
 ```
 
 `DrainCheck` covers the drain logic in `d9018065`; `CoplanarCheck` the length handling and the
-allocation decision in `201967f2`; `TintMemoCheck` the memo invariants in `aa933934`.
+allocation decision in `201967f2`; `TintMemoCheck` the memo invariants in `aa933934`;
+`AnimationCheck` the easing maths behind the GUI animations.
+
+## Video settings GUI
+
+Animated at the render layer only. What moves:
+
+| Where | Motion |
+|---|---|
+| `FlatButtonWidget` | hover background cross-fade; the selection marker grows out of the middle of its edge |
+| `ControlElement` | hover background cross-fade, and the label slides 2px in from the edge |
+| `TickBoxControl` | the fill scales out of the centre while the border takes on the accent colour |
+| `SliderControl` | the bare value and the full slider cross-fade instead of swapping; the track wipes out from the thumb |
+| `ScrollBarComponent` | eased scroll position, thumb highlight on hover and drag |
+| `TabFrame` | a newly selected page settles in from the right |
+
+`org.embeddedt.embeddium.gui.animation.Animation` is the whole mechanism: one eased value plus
+colour helpers. It uses exponential smoothing rather than start/duration tweens because every one
+of these states can reverse mid-flight -- the cursor leaves a button before its fade finished --
+and smoothing handles that with nothing to restart.
+
+**Why this cannot reach addons.** The addon-facing API is data-level: `OptionGUIConstructionEvent`,
+`OptionPageConstructionEvent` and `OptionGroupConstructionEvent` all trade in `OptionPage`,
+`OptionGroup` and `Option`, and the screen builds every widget itself. Addons supply no widgets,
+renderers or screens. Every edit here adds members and leaves existing signatures alone, so a
+custom `Control` implementation still works, and a custom `ControlElement` subclass inherits the
+animation if it calls `super.render()` and simply does not animate if it does not.
+
+Two rules the code follows, both of which are correctness rather than polish:
+
+- Anything that scrolls is drawn *and* hit-tested from the eased offset (`getRenderOffset()`), never
+  the target. Using the target for one and the eased value for the other puts the cursor out of step
+  with the screen while a scroll settles, and clicks land on the wrong row. `TabFrame`'s slide shifts
+  the cursor by the same amount for the same reason.
+- Dragging a scrollbar thumb snaps rather than eases. A drag is direct manipulation; easing it feels
+  like the content is on elastic.
+
+**Not verified visually.** There is no way to see the screen from here -- `runGameTestCiClient`
+never opens it, and the checks cover the maths, not the look. Timings (45-70ms half-lives, a 10px
+tab slide) are a starting point and are meant to be argued with.
 
 ## Open: Complementary shader artifacts
 

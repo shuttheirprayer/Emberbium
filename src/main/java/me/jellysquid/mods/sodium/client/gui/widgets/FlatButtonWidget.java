@@ -8,6 +8,7 @@ import net.minecraft.client.gui.navigation.CommonInputs;
 import net.minecraft.client.gui.navigation.FocusNavigationEvent;
 import net.minecraft.client.gui.navigation.ScreenRectangle;
 import net.minecraft.network.chat.Component;
+import org.embeddedt.embeddium.gui.animation.Animation;
 import org.embeddedt.embeddium.gui.theme.DefaultColors;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -26,6 +27,9 @@ public class FlatButtonWidget extends AbstractWidget implements Renderable {
     private boolean leftAligned;
 
     private Component label;
+
+    private final Animation hoverFade = new Animation(55.0f, 0.0f);
+    private final Animation selectGrow = new Animation(70.0f, 0.0f);
 
     public FlatButtonWidget(Dim2i dim, Component label, Runnable action) {
         this.dim = dim;
@@ -49,7 +53,11 @@ public class FlatButtonWidget extends AbstractWidget implements Renderable {
 
         this.hovered = this.isHovered(mouseX, mouseY);
 
-        int backgroundColor = this.enabled ? (this.hovered ? this.style.bgHovered : this.style.bgDefault) : this.style.bgDisabled;
+        float hover = this.hoverFade.towards(this.enabled && this.hovered);
+
+        int backgroundColor = this.enabled
+                ? Animation.lerpColor(this.style.bgDefault, this.style.bgHovered, hover)
+                : this.style.bgDisabled;
         int textColor = this.enabled ? this.style.textDefault : this.style.textDisabled;
 
         int strWidth = this.font.width(this.label);
@@ -63,8 +71,23 @@ public class FlatButtonWidget extends AbstractWidget implements Renderable {
         }
         this.drawString(drawContext, this.label, textX, this.dim.getCenterY() - 4, textColor);
 
-        if (this.enabled && this.selected) {
-            this.drawRect(drawContext, this.dim.x(), this.leftAligned ? this.dim.y() : (this.dim.getLimitY() - 1), this.leftAligned ? (this.dim.x() + 1) : this.dim.getLimitX(), this.dim.getLimitY(), DefaultColors.ELEMENT_ACTIVATED);
+        // The selection marker grows out from the middle of the edge it sits on, rather than
+        // appearing whole. Kept on the same edges and at the same thickness as before.
+        float selectedFade = this.selectGrow.towards(this.enabled && this.selected);
+
+        if (selectedFade > 0.0f) {
+            int markerColor = Animation.scaleAlpha(DefaultColors.ELEMENT_ACTIVATED, Math.min(1.0f, selectedFade * 2.0f));
+            float grow = Animation.smoothstep(selectedFade);
+
+            if (this.leftAligned) {
+                int half = Math.round((this.dim.height() / 2.0f) * grow);
+                int center = this.dim.getCenterY();
+                this.drawRect(drawContext, this.dim.x(), center - half, this.dim.x() + 1, center + half, markerColor);
+            } else {
+                int half = Math.round((this.dim.width() / 2.0f) * grow);
+                int center = this.dim.getCenterX();
+                this.drawRect(drawContext, center - half, this.dim.getLimitY() - 1, center + half, this.dim.getLimitY(), markerColor);
+            }
         }
         if (this.enabled && this.isFocused()) {
             this.drawBorder(drawContext, this.dim.x(), this.dim.y(), this.dim.getLimitX(), this.dim.getLimitY(), -1);

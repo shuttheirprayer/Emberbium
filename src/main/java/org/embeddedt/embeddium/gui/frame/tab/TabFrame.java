@@ -9,6 +9,7 @@ import me.jellysquid.mods.sodium.client.util.Dim2i;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import org.apache.commons.lang3.Validate;
+import org.embeddedt.embeddium.gui.animation.Animation;
 import org.embeddedt.embeddium.gui.frame.AbstractFrame;
 import org.embeddedt.embeddium.gui.frame.ScrollableFrame;
 
@@ -27,6 +28,11 @@ public class TabFrame extends AbstractFrame {
     private final AtomicReference<Component> tabSectionSelectedTab;
     private final AtomicReference<Integer> tabSectionScrollBarOffset;
     private Tab<?> selectedTab;
+
+    /** How far the incoming page is displaced when a tab is selected, in pixels. */
+    private static final float TAB_SLIDE_DISTANCE = 10.0f;
+
+    private final Animation tabSlide = new Animation(55.0f, 0.0f);
     private AbstractFrame selectedFrame;
     private Dim2i tabSectionInner;
     private ScrollableFrame sidebarFrame;
@@ -68,6 +74,8 @@ public class TabFrame extends AbstractFrame {
         if (this.onSetTab != null) {
             this.onSetTab.run();
         }
+        this.tabSlide.setTarget(0.0f);
+        this.tabSlide.restartFrom(TAB_SLIDE_DISTANCE);
         this.buildFrame();
     }
 
@@ -169,7 +177,21 @@ public class TabFrame extends AbstractFrame {
             }
         }
         if(this.selectedFrame != null) {
-            this.selectedFrame.render(drawContext, mouseX, mouseY, delta);
+            // A newly selected page settles in from the right instead of appearing in place. The
+            // cursor is shifted by the same amount so hit-testing follows what is drawn; once the
+            // slide is over both are zero and this costs a comparison.
+            float slide = this.tabSlide.get();
+
+            if (slide != 0.0f) {
+                int shift = Math.round(slide);
+
+                drawContext.pose().pushPose();
+                drawContext.pose().translate(shift, 0.0f, 0.0f);
+                this.selectedFrame.render(drawContext, mouseX - shift, mouseY, delta);
+                drawContext.pose().popPose();
+            } else {
+                this.selectedFrame.render(drawContext, mouseX, mouseY, delta);
+            }
         }
     }
 

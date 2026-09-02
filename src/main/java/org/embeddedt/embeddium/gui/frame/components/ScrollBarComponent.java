@@ -6,6 +6,7 @@ import me.jellysquid.mods.sodium.client.util.Dim2i;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.navigation.ScreenRectangle;
 import net.minecraft.util.Mth;
+import org.embeddedt.embeddium.gui.animation.Animation;
 
 import java.util.function.Consumer;
 
@@ -22,6 +23,12 @@ public class ScrollBarComponent extends AbstractWidget {
     private final Consumer<Integer> onSetOffset;
     private int offset = 0;
     private boolean isDragging;
+
+    // offset is the target the input handlers set; this is where the content is actually drawn.
+    // Both the thumb and the viewport read the eased value, so they never disagree, and the thumb
+    // is hit-tested against the position it was last drawn at.
+    private final Animation scrollEase = new Animation(45.0f, 0.0f);
+    private final Animation thumbHighlight = new Animation(60.0f, 0.0f);
 
     private Dim2i scrollThumb = null;
     private int scrollThumbClickOffset;
@@ -43,16 +50,36 @@ public class ScrollBarComponent extends AbstractWidget {
     }
 
     public void updateThumbPosition() {
+        this.updateThumbPosition(this.offset);
+    }
+
+    private void updateThumbPosition(float offset) {
         int scrollThumbLength = (this.viewPortLength * (this.mode == Mode.VERTICAL ? this.dim.height() : this.dim.width() - 6)) / this.frameLength;
         int maximumScrollThumbOffset = this.viewPortLength - scrollThumbLength;
-        int scrollThumbOffset = this.offset * maximumScrollThumbOffset / this.maxScrollBarOffset;
+        int scrollThumbOffset = Math.round(offset * maximumScrollThumbOffset / (float) this.maxScrollBarOffset);
         this.scrollThumb = new Dim2i(this.dim.x() + 2 + (this.mode == Mode.HORIZONTAL ? scrollThumbOffset : 0), this.dim.y() + 2 + (this.mode == Mode.VERTICAL ? scrollThumbOffset : 0), (this.mode == Mode.VERTICAL ? this.dim.width() : scrollThumbLength) - 4, (this.mode == Mode.VERTICAL ? scrollThumbLength : this.dim.height()) - 4);
+    }
+
+    /**
+     * The eased scroll position, in the same units as {@link #getOffset()}. Everything that draws
+     * or hit-tests scrolled content must use this rather than the raw offset, or the two disagree
+     * while the animation is settling and clicks land on the wrong row.
+     */
+    public float getRenderOffset() {
+        this.scrollEase.setTarget(this.offset);
+        return this.scrollEase.get();
     }
 
     @Override
     public void render(GuiGraphics drawContext, int mouseX, int mouseY, float delta) {
+        // Redraw the thumb where the content actually is, so the two move together, and leave
+        // scrollThumb holding that position for the next click to hit-test against.
+        this.updateThumbPosition(this.getRenderOffset());
+
+        float highlight = this.thumbHighlight.towards(this.isDragging || this.scrollThumb.containsCursor(mouseX, mouseY));
+
         this.drawBorder(drawContext, this.dim.x(), this.dim.y(), this.dim.getLimitX(), this.dim.getLimitY(), 0xFFAAAAAA);
-        this.drawRect(drawContext, this.scrollThumb.x(), this.scrollThumb.y(), this.scrollThumb.getLimitX(), this.scrollThumb.getLimitY(), 0xFFAAAAAA);
+        this.drawRect(drawContext, this.scrollThumb.x(), this.scrollThumb.y(), this.scrollThumb.getLimitX(), this.scrollThumb.getLimitY(), Animation.lerpColor(0xFFAAAAAA, 0xFFFFFFFF, highlight));
         if (this.isFocused()) {
             this.drawBorder(drawContext, this.dim.x(), this.dim.y(), this.dim.getLimitX(), this.dim.getLimitY(), -1);
         }
@@ -125,6 +152,14 @@ public class ScrollBarComponent extends AbstractWidget {
 
     public void setOffset(int value) {
         this.offset = Mth.clamp(value, 0, this.maxScrollBarOffset);
+
+        // A drag is the user moving the content directly, so it has to track the cursor exactly.
+        // Only the indirect ways of scrolling -- wheel, keys, clicking the track, jumping to a
+        // focused row -- get eased.
+        if (this.isDragging) {
+            this.scrollEase.snapTo(this.offset);
+        }
+
         this.updateThumbPosition();
         this.onSetOffset.accept(this.offset);
     }
