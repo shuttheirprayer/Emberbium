@@ -4,7 +4,6 @@ import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.gl.attribute.GlVertexAttributeBinding;
 import me.jellysquid.mods.sodium.client.gl.buffer.GlBuffer;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
-import org.embeddedt.embeddium.render.ShaderModBridge;
 import org.lwjgl.opengl.GL20C;
 import org.lwjgl.opengl.GL30C;
 import org.lwjgl.opengl.GL43C;
@@ -148,19 +147,6 @@ public enum VertexAttributeFunctions {
         // legacy path -- so turning the option off has to fall all the way back to LEGACY,
         // otherwise it is not an escape hatch from a driver bug in either one.
         if (!SodiumClientMod.options().advanced.useModernGlPaths) {
-            return LEGACY;
-        }
-
-        // Iris/Oculus takes over terrain vertex setup (see DefaultChunkRenderer#getBindingsForType,
-        // which returns null for it) and does that with glVertexAttribPointer, which reads the
-        // currently bound GL_ARRAY_BUFFER and assigns the attribute its own binding index. That is
-        // the coupled format+binding model, and it cannot be mixed with glBindVertexBuffer inside
-        // one VAO. Doing so corrupts distant terrain geometry with a shader pack loaded.
-        //
-        // Buffer-level DSA is unaffected by this -- it never touches vertex array state -- so only
-        // the attribute path drops back.
-        if (ShaderModBridge.isShaderModPresent()) {
-            SodiumClientMod.logger().info("Shader mod present; using the legacy vertex attribute path for compatibility");
             return LEGACY;
         }
 

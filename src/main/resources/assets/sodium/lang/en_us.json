@@ -48,7 +48,7 @@
   "sodium.options.cpu_render_ahead_limit.value": "%s frame(s)",
   "sodium.options.performance_impact_string": "Performance Impact: %s",
   "sodium.options.modern_gl_paths.name": "Use Modern OpenGL Paths",
-  "sodium.options.modern_gl_paths.tooltip": "Experimental, and off by default.\n\nUses newer OpenGL buffer paths when the driver supports them, avoiding the need to bind objects just to modify them. This may improve frame times without shaders.\n\nIt is known to corrupt distant terrain geometry when a shader pack is loaded, so only enable it if you will check for artifacts.\n\nTakes effect after a game restart.",
+  "sodium.options.modern_gl_paths.tooltip": "Uses OpenGL 4.5 Direct State Access for buffer and vertex array operations, which avoids binding objects just to modify them.\n\nThis reduces driver overhead, but the benefit varies by driver and the code paths involved are less widely tested than the standard ones. Turn it off if you see rendering glitches or crashes.\n\nRequires OpenGL 4.5. Takes effect after a game restart.",
   "sodium.options.use_persistent_mapping.name": "Use Persistent Mapping",
   "sodium.options.use_persistent_mapping.tooltip": "If enabled, a small amount of memory will be persistently mapped as a staging buffer for chunk uploading, helping to reduce CPU overhead and frame time instability when loading or updating chunks.\n\nRequires OpenGL 4.4 or ARB_buffer_storage.",
   "sodium.options.chunk_update_threads.name": "Chunk Update Threads",
