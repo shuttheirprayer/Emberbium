@@ -36,9 +36,10 @@ Behaviour:
 | `7cbb5351` | Removed the `FlawlessFramesService` ServiceLoader entry, which class-loaded `TestRegistry` during normal play and broke joining servers without Embeddium. Cherry-picked from au-naturel. |
 | `5729de2f` | `GlFence.sync(long)` used `glWaitSync`, which blocks the GPU not the CPU and violates the spec by passing a timeout. Now `glClientWaitSync` with result checking. Latent — nothing calls `sync()`. |
 | `d9018065` | `collectChunkBuildResults()` aborted its drain at the first failed chunk build, stranding every output already polled. In `destroy()` it also skipped GL and off-heap teardown entirely, leaking region storage that has no reclaimer behind it. |
-| `7ceb626f` | Ported DSA / modern GL buffer paths from au-naturel behind `advanced.useModernGlPaths`, default on. **Never benchmarked.** |
+| `7ceb626f` | Ported DSA / modern GL buffer paths from au-naturel behind `advanced.useModernGlPaths`. Default off as of `000b856d`. **Never benchmarked.** |
 | `024cab76` | Reverted two changes that were made on a wrong diagnosis. |
 | `201967f2` | `TranslucentQuadAnalyzer.getSortState()` copied the quad centers before deciding whether the section needed them, allocating a `float[]` per translucent section per rebuild on the meshing path even for the `NONE` level. The coplanarity test now reads the list's backing array in place. |
+| `000b856d` | `advanced.useModernGlPaths` now defaults to off, and the tooltip says the option is experimental and what it does at each GL level. The port stays in the tree for testing on modern hardware. No serialized key rename, so a config that already has `use_modern_gl_paths=true` keeps it on. |
 
 Non-behaviour: the rebrand (`fdfa0a6a`), the vendored ModDevGradle plugin (`714ea9ef`), the
 version anchor (`42a1846f`).
@@ -138,9 +139,14 @@ What was real is the allocation, fixed at `201967f2`. See the commit message.
 
 ## Next
 
-1. Benchmark the DSA port with spark or delete it. It has been on by default and unmeasured.
-2. Report the stale `mixin.env.refMapRemappingFile` path upstream — it points at a ForgeGradle
+1. Report the stale `mixin.env.refMapRemappingFile` path upstream — it points at a ForgeGradle
    path ModDevGradle never creates, left over from the MDG migration in `151d121e`.
+
+Still unmeasured, now without a deadline: the DSA port's actual effect on frame time. It is off by
+default, so it costs stock users nothing, but nobody has benchmarked it. If it is ever to be
+defaulted on, that needs spark numbers first -- fixed position, `doDaylightCycle false`,
+`time set noon`, `weather clear`, `/spark profiler --thread "Render thread" --timeout 60`, same
+settings both runs.
 
 Declined deliberately: merging Xenon's `extras` or options GUI (duplicates Embeddium Extra and
 TexTrue's, which this fork must stay compatible with), bulk-adopting au-naturel (squashed
