@@ -58,7 +58,11 @@ public class SodiumGameOptions {
     public static class AdvancedSettings {
         public boolean enableMemoryTracing = false;
         public boolean useAdvancedStagingBuffers = true;
-        public boolean useModernGlPaths = true;
+        // Renamed key: beta.82 and beta.83 persisted use_modern_gl_paths=true into user configs
+        // before the shader corruption was found. A saved value beats the default, so the key is
+        // renamed to make those configs fall back to off. Same trick as the sorting option below.
+        @SerializedName("use_modern_gl_paths_v2")
+        public boolean useModernGlPaths = false;
         public boolean disableIncompatibleModWarnings = false;
 
         public int cpuRenderAheadLimit = 3;
