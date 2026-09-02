@@ -30,6 +30,7 @@ public class FlatButtonWidget extends AbstractWidget implements Renderable {
 
     private final Animation hoverFade = new Animation(55.0f, 0.0f);
     private final Animation selectGrow = new Animation(70.0f, 0.0f);
+    private final Animation enableFade = new Animation(80.0f, 1.0f);
 
     public FlatButtonWidget(Dim2i dim, Component label, Runnable action) {
         this.dim = dim;
@@ -54,11 +55,13 @@ public class FlatButtonWidget extends AbstractWidget implements Renderable {
         this.hovered = this.isHovered(mouseX, mouseY);
 
         float hover = this.hoverFade.towards(this.enabled && this.hovered);
+        // Apply and Undo flip between enabled and disabled every time a setting is touched, which
+        // was the most visible hard swap left on the screen.
+        float enabledFade = this.enableFade.towards(this.enabled);
 
-        int backgroundColor = this.enabled
-                ? Animation.lerpColor(this.style.bgDefault, this.style.bgHovered, hover)
-                : this.style.bgDisabled;
-        int textColor = this.enabled ? this.style.textDefault : this.style.textDisabled;
+        int backgroundColor = Animation.lerpColor(this.style.bgDisabled,
+                Animation.lerpColor(this.style.bgDefault, this.style.bgHovered, hover), enabledFade);
+        int textColor = Animation.lerpColor(this.style.textDisabled, this.style.textDefault, enabledFade);
 
         int strWidth = this.font.width(this.label);
 

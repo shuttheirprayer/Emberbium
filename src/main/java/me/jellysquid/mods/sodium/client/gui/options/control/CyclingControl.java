@@ -7,6 +7,7 @@ import me.jellysquid.mods.sodium.client.util.Dim2i;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.navigation.CommonInputs;
+import org.embeddedt.embeddium.gui.animation.Animation;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import org.apache.commons.lang3.Validate;
@@ -76,6 +77,9 @@ public class CyclingControl<T extends Enum<T>> implements Control<T> {
         private final Component[] names;
         private int currentIndex;
 
+        private final Animation valueSettle = new Animation(60.0f, 1.0f);
+        private int lastDrawnOrdinal = -1;
+
         public CyclingControlElement(Option<T> option, Dim2i dim, T[] allowedValues, Component[] names) {
             super(option, dim);
 
@@ -102,8 +106,26 @@ public class CyclingControl<T extends Enum<T>> implements Control<T> {
                 name = Component.empty().append(name).withStyle(ChatFormatting.GRAY, ChatFormatting.STRIKETHROUGH);
             }
 
+            // Watching the drawn value rather than hooking cycleControl catches every way it can
+            // change -- cycling, undo, another option making this one available again.
+            int ordinal = value.ordinal();
+
+            if (this.lastDrawnOrdinal != -1 && this.lastDrawnOrdinal != ordinal) {
+                this.valueSettle.setTarget(1.0f);
+                this.valueSettle.restartFrom(0.0f);
+            }
+
+            this.lastDrawnOrdinal = ordinal;
+
+            // The new value arrives dimmed and slightly out from the edge, then settles into place.
+            // Only ever one string on screen, so no overlapping glyphs, and the floor keeps it well
+            // clear of MIN_TEXT_ALPHA.
+            float settle = Animation.smoothstep(this.valueSettle.get());
+
             int strWidth = this.getStringWidth(name);
-            this.drawString(drawContext, name, this.dim.getLimitX() - strWidth - 6, this.dim.getCenterY() - 4, 0xFFFFFFFF);
+            int textX = this.dim.getLimitX() - strWidth - 6 + Math.round(4.0f * (1.0f - settle));
+
+            this.drawString(drawContext, name, textX, this.dim.getCenterY() - 4, Animation.scaleAlpha(0xFFFFFFFF, 0.35f + 0.65f * settle));
         }
 
         @Override

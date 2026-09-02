@@ -78,6 +78,12 @@ public class AnimationCheck {
         return (alpha << 24) | (color & 0x00FFFFFF);
     }
 
+    static final float MIN_TEXT_ALPHA = 4.0f / 255.0f;
+
+    static boolean isTextVisible(float alpha) {
+        return alpha >= MIN_TEXT_ALPHA;
+    }
+
     static float smoothstep(float t) {
         float x = Math.max(0.0f, Math.min(1.0f, t));
         return x * x * (3.0f - 2.0f * x);
@@ -158,6 +164,22 @@ public class AnimationCheck {
         assert scaleAlpha(0xFFFFFFFF, 0f) == 0x00FFFFFF : "zero alpha keeps the colour bits";
         assert scaleAlpha(0xFF123456, 2f) == 0xFF123456 : "factor above 1 is clamped, not wrapped";
         assert scaleAlpha(0xFF123456, -1f) == 0x00123456 : "negative factor is clamped to zero";
+
+        // --- the text alpha floor ---
+        // Minecraft's Font does: (color & 0xFC000000) == 0 ? color | 0xFF000000 : color
+        // so any alpha below 4 comes out fully opaque. A fade that runs to zero therefore flashes
+        // the text solid on its last frame, which is exactly the bug this floor exists to avoid.
+        assert !isTextVisible(0f) : "a fully faded value must not be drawn";
+        assert !isTextVisible(3f / 255f) : "alpha 3 is inside the opaque-fixup range";
+        assert isTextVisible(4f / 255f) : "alpha 4 is the first safe value";
+        assert isTextVisible(1f) : "opaque text is obviously drawable";
+
+        for (int alpha = 0; alpha <= 255; alpha++) {
+            int color = scaleAlpha(0xFFFFFFFF, alpha / 255f);
+            boolean forcedOpaque = (color & 0xFC000000) == 0;
+            assert !(forcedOpaque && isTextVisible(alpha / 255f))
+                    : "alpha " + alpha + " would be forced opaque by Font but is treated as drawable";
+        }
 
         assert smoothstep(0f) == 0f && smoothstep(1f) == 1f : "smoothstep must hit its endpoints";
         assert smoothstep(-5f) == 0f && smoothstep(5f) == 1f : "smoothstep must clamp";

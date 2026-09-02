@@ -66,10 +66,11 @@ Animated at the render layer only. What moves:
 
 | Where | Motion |
 |---|---|
-| `FlatButtonWidget` | hover background cross-fade; the selection marker grows out of the middle of its edge |
+| `FlatButtonWidget` | hover background cross-fade; enabled/disabled cross-fade; the selection marker grows out of the middle of its edge |
 | `ControlElement` | hover background cross-fade, and the label slides 2px in from the edge |
 | `TickBoxControl` | the fill scales out of the centre while the border takes on the accent colour |
 | `SliderControl` | the bare value and the full slider cross-fade instead of swapping; the track wipes out from the thumb |
+| `CyclingControl` | a changed value arrives dimmed and slightly out from the edge, then settles into place |
 | `ScrollBarComponent` | eased scroll position, thumb highlight on hover and drag |
 | `TabFrame` | a newly selected page settles in from the right |
 
@@ -93,6 +94,14 @@ Two rules the code follows, both of which are correctness rather than polish:
   the cursor by the same amount for the same reason.
 - Dragging a scrollbar thumb snaps rather than eases. A drag is direct manipulation; easing it feels
   like the content is on elastic.
+- Text is never faded below `Animation.MIN_TEXT_ALPHA` (4/255). Minecraft's `Font.adjustColor` is
+  `(color & 0xFC000000) == 0 ? color | 0xFF000000 : color`, so text at alpha 0-3 comes out **fully
+  opaque** -- a fade that runs to zero flashes the text solid on its last frame instead of
+  disappearing. Fills have no such fixup and can fade to zero normally.
+- Selecting the tab that is already open does not replay the slide.
+
+The accent colour for selection markers, tick boxes, the option-group highlight and the logo
+watermark is the single constant `DefaultColors.ELEMENT_ACTIVATED`, now `0xFF679BF5`.
 
 **Not verified visually.** There is no way to see the screen from here -- `runGameTestCiClient`
 never opens it, and the checks cover the maths, not the look. Timings (45-70ms half-lives, a 10px

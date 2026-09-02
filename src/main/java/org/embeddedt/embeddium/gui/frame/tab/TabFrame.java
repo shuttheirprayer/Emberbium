@@ -69,13 +69,20 @@ public class TabFrame extends AbstractFrame {
     }
 
     public void setTab(Tab<?> tab) {
+        // Clicking the tab that is already open is not a transition, so it must not replay one.
+        boolean changed = this.selectedTab != tab;
+
         this.selectedTab = tab;
         this.tabSectionSelectedTab.set(this.selectedTab.title());
         if (this.onSetTab != null) {
             this.onSetTab.run();
         }
-        this.tabSlide.setTarget(0.0f);
-        this.tabSlide.restartFrom(TAB_SLIDE_DISTANCE);
+
+        if (changed) {
+            this.tabSlide.setTarget(0.0f);
+            this.tabSlide.restartFrom(TAB_SLIDE_DISTANCE);
+        }
+
         this.buildFrame();
     }
 

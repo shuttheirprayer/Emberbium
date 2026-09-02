@@ -114,9 +114,25 @@ public final class Animation {
     }
 
     /**
-     * Scales a colour's alpha, for cross-fading two things drawn on top of each other. Minecraft
-     * skips text at zero alpha and treats a zero-alpha fill as invisible, so a fully faded-out
-     * element costs nothing to leave in place.
+     * The lowest alpha that text can be drawn at. Minecraft's Font forces anything below this to
+     * fully opaque:
+     *
+     * <pre>{@code return (color & 0xFC000000) == 0 ? color | 0xFF000000 : color;}</pre>
+     *
+     * so a fade that runs all the way down flashes the text solid on its last frame instead of
+     * disappearing. Stop drawing at this alpha rather than fading through it. Fills have no such
+     * fixup and can fade to zero normally.
+     */
+    public static final float MIN_TEXT_ALPHA = 4.0f / 255.0f;
+
+    /** Whether text at this alpha can be drawn without tripping Minecraft's opaque fixup. */
+    public static boolean isTextVisible(float alpha) {
+        return alpha >= MIN_TEXT_ALPHA;
+    }
+
+    /**
+     * Scales a colour's alpha, for cross-fading two things drawn on top of each other. For text,
+     * check {@link #isTextVisible(float)} first -- see {@link #MIN_TEXT_ALPHA}.
      */
     public static int scaleAlpha(int color, float factor) {
         int alpha = Math.round(((color >>> 24) & 0xFF) * Math.max(0.0f, Math.min(1.0f, factor)));

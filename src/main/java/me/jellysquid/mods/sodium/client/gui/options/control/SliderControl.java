@@ -84,11 +84,13 @@ public class SliderControl implements Control<Integer> {
             // two instead: they occupy the same box, so one fades out as the other fades in.
             float shown = this.reveal.towards(this.option.isAvailable() && (this.hovered || this.isFocused()));
 
-            if (shown < 1.0f) {
+            // Both halves are text, so neither may be drawn below MIN_TEXT_ALPHA -- Minecraft would
+            // render it fully opaque and the value would flash back into view as it faded out.
+            if (Animation.isTextVisible(1.0f - shown)) {
                 this.renderStandaloneValue(drawContext, 1.0f - shown);
             }
 
-            if (shown > 0.0f) {
+            if (Animation.isTextVisible(shown)) {
                 this.renderSlider(drawContext, shown);
             }
         }
