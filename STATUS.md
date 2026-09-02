@@ -76,15 +76,53 @@ and `endFlashIntensity`, and both fail to resolve on Oculus 1.8.0.1 — that pac
 this Iris supports. Those uniforms drive biome tint and End flash, not geometry, so it is a real
 version mismatch but not established as the cause.
 
+## Closed
+
+### `SectionRenderDataUnsafe` retention audit — no leak found (2026-09-03)
+
+Static reachability audit, not a runtime measurement. `allocateHeap` has exactly one caller
+(`SectionRenderDataStorage`'s constructor) and `freeHeap` exactly one (`SectionRenderDataStorage.delete()`),
+which only `RenderRegion.delete()` calls, so the whole question reduces to: can a `RenderRegion`
+become unreachable without `delete()`?
+
+Regions live only in `RenderRegionManager.regions`. Every way an entry leaves that map:
+
+- `create()` — `put` only when `get(key) == null`, so it never overwrites a live region.
+- `update()` — `delete(commandList)` immediately before `it.remove()`.
+- `delete()` — deletes every region before `clear()`.
+- the manager itself being dropped — its only owner is `RenderSectionManager.regions` (final), and
+  `RenderSectionManager` is only dropped at the two `SodiumWorldRenderer` sites
+  (`unloadWorld`, `initRenderer`), both of which call `destroy()` first. The `SodiumWorldRenderer`
+  itself is created in the `LevelRenderer` constructor and never replaced.
+
+Two supporting invariants that make `update()` safe:
+
+- `isEmpty()` is `sectionCount == 0`, and a non-disposed `RenderSection` is always registered in its
+  region, so a region holding a live section is never deleted. `filterChunkBuildResults()` drops
+  disposed sections, so `uploadMeshes` cannot resurrect storage on a deleted region.
+- After deletion, `sectionRenderData` is cleared, and `DefaultChunkRenderer.render()` skips a region
+  whose `getStorage(pass)` is null. A stale `ChunkRenderList` left in `renderLists` for a region
+  deleted mid-frame reads nothing from the freed pointer.
+
+Two latent traps noticed while auditing, neither reachable today, neither patched:
+
+- `MultiDrawBatch.delete()` frees three aligned allocations without nulling the pointers, and
+  `ShaderChunkRenderer.delete()` does not clear `programs`. A second `destroy()` would double-free.
+  It can only be reached if `destroy()` throws — `collectChunkBuildResults()` still rethrows a failed
+  build — because `unloadWorld` then skips `renderSectionManager = null`. That exception is a
+  `ReportedException` that crashes the game before a second `destroy()` can run.
+- `ChunkBuilderSortTask.execute()` calls `sortBuffer.centers().length` for every entry of the sort
+  state map, but `compactForStorage()` nulls `centers` for `STATIC`. `createSortTask` only checks
+  that *some* entry is dynamic. Safe only because `TRANSLUCENT` is the sole `isSorted()` pass, so the
+  map never holds more than one entry.
+
 ## Next
 
-1. Finish the `SectionRenderDataUnsafe` retention audit. The `destroy()` hole is fixed; confirm
-   no other path drops a `RenderRegion` without `delete()`.
-2. Translucency sorting retention — `SortState` keeps a `float[]` per dynamic-sort section and
+1. Translucency sorting retention — `SortState` keeps a `float[]` per dynamic-sort section and
    `compactForStorage()` only nulls it for `STATIC`. Check `RenderSection.delete()` clears them.
    Also `getSortState()` allocates on the meshing path via `toArray(new float[0])`.
-3. Benchmark the DSA port with spark or delete it. It has been on by default and unmeasured.
-4. Report the stale `mixin.env.refMapRemappingFile` path upstream — it points at a ForgeGradle
+2. Benchmark the DSA port with spark or delete it. It has been on by default and unmeasured.
+3. Report the stale `mixin.env.refMapRemappingFile` path upstream — it points at a ForgeGradle
    path ModDevGradle never creates, left over from the MDG migration in `151d121e`.
 
 Declined deliberately: merging Xenon's `extras` or options GUI (duplicates Embeddium Extra and
