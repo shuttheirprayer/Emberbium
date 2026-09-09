@@ -2,7 +2,6 @@ package me.jellysquid.mods.sodium.client.render.chunk;
 
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.gl.attribute.GlVertexAttributeBinding;
-import me.jellysquid.mods.sodium.client.gl.attribute.GlVertexFormat;
 import me.jellysquid.mods.sodium.client.gl.device.CommandList;
 import me.jellysquid.mods.sodium.client.gl.device.DrawCommandList;
 import me.jellysquid.mods.sodium.client.gl.device.MultiDrawBatch;
@@ -17,11 +16,8 @@ import me.jellysquid.mods.sodium.client.render.chunk.data.SectionRenderDataUnsaf
 import me.jellysquid.mods.sodium.client.render.chunk.lists.ChunkRenderListIterable;
 import me.jellysquid.mods.sodium.client.render.chunk.lists.ChunkRenderList;
 import me.jellysquid.mods.sodium.client.render.chunk.region.RenderRegion;
-import me.jellysquid.mods.sodium.client.render.chunk.shader.ChunkShaderBindingPoints;
 import me.jellysquid.mods.sodium.client.render.chunk.shader.ChunkShaderInterface;
 import me.jellysquid.mods.sodium.client.render.chunk.terrain.TerrainRenderPass;
-import me.jellysquid.mods.sodium.client.render.chunk.vertex.format.ChunkMeshAttribute;
-import me.jellysquid.mods.sodium.client.render.chunk.vertex.format.ChunkMeshFormats;
 import me.jellysquid.mods.sodium.client.render.chunk.vertex.format.ChunkVertexType;
 import me.jellysquid.mods.sodium.client.render.viewport.CameraTransform;
 import me.jellysquid.mods.sodium.client.util.BitwiseMath;
@@ -43,7 +39,7 @@ public class DefaultChunkRenderer extends ShaderChunkRenderer {
         this.batch = new MultiDrawBatch((ModelQuadFacing.COUNT * RenderRegion.REGION_SIZE) + 1);
         this.sharedIndexBuffer = new SharedQuadIndexBuffer(device.createCommandList(), SharedQuadIndexBuffer.IndexType.INTEGER);
 
-        this.vertexAttributeBindings = getBindingsForType();
+        this.vertexAttributeBindings = vertexType.getAttributeBindings();
     }
 
     @Override
@@ -237,34 +233,6 @@ public class DefaultChunkRenderer extends ShaderChunkRenderer {
         }
 
         return tessellation;
-    }
-
-    private GlVertexAttributeBinding[] getBindingsForType() {
-        if(this.vertexType == ChunkMeshFormats.COMPACT) {
-            return new GlVertexAttributeBinding[] {
-                    new GlVertexAttributeBinding(ChunkShaderBindingPoints.ATTRIBUTE_POSITION_ID,
-                            this.vertexFormat.getAttribute(ChunkMeshAttribute.POSITION_MATERIAL_MESH)),
-                    new GlVertexAttributeBinding(ChunkShaderBindingPoints.ATTRIBUTE_COLOR,
-                            this.vertexFormat.getAttribute(ChunkMeshAttribute.COLOR_SHADE)),
-                    new GlVertexAttributeBinding(ChunkShaderBindingPoints.ATTRIBUTE_BLOCK_TEXTURE,
-                            this.vertexFormat.getAttribute(ChunkMeshAttribute.BLOCK_TEXTURE)),
-                    new GlVertexAttributeBinding(ChunkShaderBindingPoints.ATTRIBUTE_LIGHT_TEXTURE,
-                            this.vertexFormat.getAttribute(ChunkMeshAttribute.LIGHT_TEXTURE))
-            };
-        } else if(this.vertexType == ChunkMeshFormats.VANILLA_LIKE) {
-            GlVertexFormat<ChunkMeshAttribute> vanillaFormat = this.vertexFormat;
-            return new GlVertexAttributeBinding[] {
-                    new GlVertexAttributeBinding(ChunkShaderBindingPoints.ATTRIBUTE_POSITION_ID,
-                            vanillaFormat.getAttribute(ChunkMeshAttribute.POSITION_MATERIAL_MESH)),
-                    new GlVertexAttributeBinding(ChunkShaderBindingPoints.ATTRIBUTE_COLOR,
-                            vanillaFormat.getAttribute(ChunkMeshAttribute.COLOR_SHADE)),
-                    new GlVertexAttributeBinding(ChunkShaderBindingPoints.ATTRIBUTE_BLOCK_TEXTURE,
-                            vanillaFormat.getAttribute(ChunkMeshAttribute.BLOCK_TEXTURE)),
-                    new GlVertexAttributeBinding(ChunkShaderBindingPoints.ATTRIBUTE_LIGHT_TEXTURE,
-                            vanillaFormat.getAttribute(ChunkMeshAttribute.LIGHT_TEXTURE)),
-            };
-        } else
-            return null; // assume Oculus/Iris will take over
     }
 
     private GlTessellation createRegionTessellation(CommandList commandList, RenderRegion.DeviceResources resources) {
