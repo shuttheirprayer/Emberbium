@@ -1,7 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.chunk.region;
 
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceOpenHashMap;
-import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.gl.arena.GlBufferArena;
 import me.jellysquid.mods.sodium.client.gl.arena.staging.StagingBuffer;
 import me.jellysquid.mods.sodium.client.gl.buffer.GlBuffer;
@@ -12,7 +11,7 @@ import me.jellysquid.mods.sodium.client.render.chunk.RenderSection;
 import me.jellysquid.mods.sodium.client.render.chunk.data.SectionRenderDataStorage;
 import me.jellysquid.mods.sodium.client.render.chunk.lists.ChunkRenderList;
 import me.jellysquid.mods.sodium.client.render.chunk.terrain.TerrainRenderPass;
-import me.jellysquid.mods.sodium.client.render.chunk.vertex.format.ChunkMeshFormats;
+import me.jellysquid.mods.sodium.client.render.chunk.vertex.format.ChunkVertexType;
 import me.jellysquid.mods.sodium.client.util.MathUtil;
 import net.minecraft.core.SectionPos;
 import org.apache.commons.lang3.Validate;
@@ -182,9 +181,9 @@ public class RenderRegion {
         return this.resources;
     }
 
-    public DeviceResources createResources(CommandList commandList) {
+    public DeviceResources createResources(CommandList commandList, ChunkVertexType vertexType) {
         if (this.resources == null) {
-            this.resources = new DeviceResources(commandList, this.stagingBuffer);
+            this.resources = new DeviceResources(commandList, this.stagingBuffer, vertexType);
         }
 
         return this.resources;
@@ -207,14 +206,9 @@ public class RenderRegion {
         private GlTessellation tessellation;
         private GlTessellation indexedTessellation;
 
-        public DeviceResources(CommandList commandList, StagingBuffer stagingBuffer) {
-            int stride;
-            if(!SodiumClientMod.canUseVanillaVertices()) {
-                // this line must be left unchanged for the Oculus mixin to apply
-                stride = ChunkMeshFormats.COMPACT.getVertexFormat().getStride();
-            } else {
-                stride = ChunkMeshFormats.VANILLA_LIKE.getVertexFormat().getStride();
-            }
+        public DeviceResources(CommandList commandList, StagingBuffer stagingBuffer, ChunkVertexType vertexType) {
+            int stride = vertexType.getVertexFormat().getStride();
+
             this.geometryArena = new GlBufferArena(commandList, REGION_SIZE * 756, stride, stagingBuffer);
             this.indexArena = new GlBufferArena(commandList, (REGION_SIZE * 378) / 4 * 6, 4, stagingBuffer);
         }
