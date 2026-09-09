@@ -12,9 +12,13 @@ public class SpriteUtil {
             return;
         }
 
-        ((SpriteContentsExtended) sprite.contents()).sodium$setActive(true);
+        SpriteContentsExtended contents = (SpriteContentsExtended) sprite.contents();
 
-        if(hasAnimation(sprite)) {
+        if (!contents.sodium$isActive()) {
+            contents.sodium$setActive(true);
+        }
+
+        if(contents.sodium$hasAnimation()) {
             var context = GlobalChunkBuildContext.get();
 
             if (context != null) {

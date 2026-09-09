@@ -74,7 +74,7 @@ public final class DoubleBufferedQueue<E> {
         @Override
         public void enqueue(@NotNull E e) {
             if (this.writeIndex >= this.elements.length) {
-                this.resize(this.writeIndex + 1);
+                this.grow(this.writeIndex + 1);
             }
 
             this.elements[this.writeIndex++] = e;
