@@ -440,7 +440,7 @@ public class SodiumGameOptionPages {
                         .setImpact(OptionImpact.MEDIUM)
                         .setEnabled(RenderDevice.INSTANCE.getCapabilities().OpenGL43)
                         .setBinding((opts, value) -> opts.advanced.useModernGlPaths = value, opts -> opts.advanced.useModernGlPaths)
-                        .setFlags(OptionFlag.REQUIRES_GAME_RESTART)
+                        .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                         .build()
                 )
                 .add(OptionImpl.createBuilder(int.class, sodiumOpts)

@@ -277,6 +277,8 @@ public class SodiumWorldRenderer {
             this.renderSectionManager = null;
         }
 
+        RenderDevice.INSTANCE.reloadFunctions();
+
         this.renderDistance = this.client.options.getEffectiveRenderDistance();
 
         this.renderSectionManager = new RenderSectionManager(this.world, this.renderDistance, commandList);

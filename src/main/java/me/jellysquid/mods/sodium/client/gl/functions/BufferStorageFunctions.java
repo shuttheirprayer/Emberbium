@@ -88,7 +88,7 @@ public enum BufferStorageFunctions {
         GLCapabilities capabilities = device.getCapabilities();
 
         // Emberbium: with modern paths off, fall through to the pre-existing non-DSA ladder.
-        boolean dsa = SodiumClientMod.options().advanced.useModernGlPaths;
+        boolean dsa = SodiumClientMod.canUseModernGlPaths();
 
         if (dsa && capabilities.OpenGL45) {
             return DSA;

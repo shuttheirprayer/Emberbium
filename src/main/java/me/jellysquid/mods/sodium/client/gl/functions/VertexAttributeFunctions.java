@@ -145,8 +145,9 @@ public enum VertexAttributeFunctions {
 
         // Emberbium: both DSA and SEPARATE_FORMAT are new here -- upstream always used the
         // legacy path -- so turning the option off has to fall all the way back to LEGACY,
-        // otherwise it is not an escape hatch from a driver bug in either one.
-        if (!SodiumClientMod.options().advanced.useModernGlPaths) {
+        // otherwise it is not an escape hatch from a driver bug in either one. A loaded shader
+        // pack counts as off; see SodiumClientMod.canUseModernGlPaths.
+        if (!SodiumClientMod.canUseModernGlPaths()) {
             return LEGACY;
         }
 

@@ -149,4 +149,8 @@ public class SodiumClientMod {
     public static boolean canApplyTranslucencySorting() {
         return SodiumClientMod.options().performance.useTranslucentFaceSorting && !ShaderModBridge.isNvidiumEnabled();
     }
+
+    public static boolean canUseModernGlPaths() {
+        return SodiumClientMod.options().advanced.useModernGlPaths && !ShaderModBridge.areShadersEnabled();
+    }
 }

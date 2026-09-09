@@ -124,7 +124,7 @@ public enum BufferDataFunctions {
         // Emberbium: DSA is opt-out. It rewrites every buffer and VAO operation in the
         // renderer, and its benefit is unverified on any given driver, so keep an escape
         // hatch that restores exactly the upstream path.
-        if (!SodiumClientMod.options().advanced.useModernGlPaths) {
+        if (!SodiumClientMod.canUseModernGlPaths()) {
             return BINDING;
         }
 

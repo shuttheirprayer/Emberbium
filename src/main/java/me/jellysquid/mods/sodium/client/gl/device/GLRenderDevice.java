@@ -16,8 +16,8 @@ import java.nio.ByteBuffer;
 
 public class GLRenderDevice implements RenderDevice {
     private final GlStateTracker stateTracker = new GlStateTracker();
-    private final DeviceFunctions functions = new DeviceFunctions(this);
-    private final CommandList commandList = new ImmediateCommandList(this.stateTracker);
+    private DeviceFunctions functions = new DeviceFunctions(this);
+    private final ImmediateCommandList commandList = new ImmediateCommandList(this.stateTracker);
     private final DrawCommandList drawCommandList = new ImmediateDrawCommandList();
 
     private boolean isActive;
@@ -62,6 +62,12 @@ public class GLRenderDevice implements RenderDevice {
         return this.functions;
     }
 
+    @Override
+    public void reloadFunctions() {
+        this.functions = new DeviceFunctions(this);
+        this.commandList.refreshFunctions();
+    }
+
     private void checkDeviceActive() {
         if (!this.isActive) {
             throw new IllegalStateException("Tried to access device from unmanaged context");
@@ -70,12 +76,16 @@ public class GLRenderDevice implements RenderDevice {
 
     private class ImmediateCommandList implements CommandList {
         private final GlStateTracker stateTracker;
-        private final BufferDataFunctions bufferDataFunctions;
-        private final BufferStorageFunctions bufferStorageFunctions;
-        private final VertexAttributeFunctions vertexAttributeFunctions;
+        private BufferDataFunctions bufferDataFunctions;
+        private BufferStorageFunctions bufferStorageFunctions;
+        private VertexAttributeFunctions vertexAttributeFunctions;
 
         private ImmediateCommandList(GlStateTracker stateTracker) {
             this.stateTracker = stateTracker;
+            this.refreshFunctions();
+        }
+
+        private void refreshFunctions() {
             this.bufferDataFunctions = GLRenderDevice.this.functions.getBufferDataFunctions();
             this.bufferStorageFunctions = GLRenderDevice.this.functions.getBufferStorageFunctions();
             this.vertexAttributeFunctions = GLRenderDevice.this.functions.getVertexAttributeFunctions();
