@@ -1,6 +1,6 @@
 # Emberbium — project status
 
-Last updated 2026-09-03.
+Last updated 2026-10-16.
 
 ## What this is
 
@@ -42,6 +42,15 @@ Behaviour:
 | `000b856d` | `advanced.useModernGlPaths` now defaults to off, and the tooltip says the option is experimental and what it does at each GL level. The port stays in the tree for testing on modern hardware. No serialized key rename, so a config that already has `use_modern_gl_paths=true` keeps it on. |
 | `aa933934` | `BlockRenderer.getVertexColors()` asked the colour provider once per quad, though every quad in a `renderModel()` call shares the same world, position and state. Now memoises the last (tint index, colour) per block. Adapted from au-naturel `834e28e6`, without its per-section hash map. |
 | `3e81eb5a` | Video settings GUI animation pass. Hover, selection, tick boxes, the slider reveal, scrolling and tab switching are eased instead of snapping. Render-layer only -- the addon API is data-level (`OptionPage`/`OptionGroup`/`Option`), and no existing signature changed. |
+| `431aa5b1` | `RenderRegionManager` split each region's build results with two stream filters, and `GlBufferArena` collected the streamed uploads into a `LinkedList`. Both are plain loops now; the arena gained a `LinkedList` overload and its `Stream` overload delegates to it. |
+| `b438754b` | `ClonedChunkSectionCache.cleanup()` walked every entry with `removeIf`. The map's link order is also timestamp order, so it now pops expired entries from the front. |
+| `bbb102c6` | Animated sprites that are not visible still advance a frame counter every tick. The frame times are copied into an `int[]` once instead of read through two accessors per tick. |
+| `bbe52d0e` | `VertexSorters` switches to an LSD radix sort from 256 keys. Same permutation as the merge sort (`checks/RadixSortCheck`), 3-7x faster. |
+| `7550d4e7`, `266d9d3b` | Touching facing slices of a section are drawn as one multidraw command, with or without a shader pack: 703 to 803 fps shaders off, 105.5 to 108.8 fps with Complementary. See Performance below. |
+| `c949df64` | `ChunkMeshBufferBuilder.grow()` multiplied by the vertex stride twice, so a facing that overflowed its scratch buffer reallocated to 100 MiB (400 MiB with Emberlens' 40-byte vertices) instead of 5 (10). Sodium fixed the same bug in 0.5.12 and 0.6. |
+| `36237a77` | Fix for `aa933934`: the colour memo is also keyed on the quad's sprite. COO's Copycats+ bridge sets the colour property from the sprite, so a multi-material copycat gave one part's colour to another. |
+| `0f1ea0f2` | Mesh builds write the facings visible from the build-time camera first, so one command covers them, as Sodium 0.7 does: 1,558 to 980 terrain commands per frame, 824 to 834 fps shaders off. |
+| `739ea6f5` | With a shader pack loaded, opaque terrain is drawn in four bands of camera distance, SOLID then CUTOUT in each, so the early depth test rejects more: 108.3 to 111.4 fps. Off without shaders, where it measured nothing. |
 
 Non-behaviour: the rebrand (`fdfa0a6a`), the vendored ModDevGradle plugin (`714ea9ef`), the
 version anchor (`42a1846f`).
@@ -65,6 +74,37 @@ allocation decision in `201967f2`; `TintMemoCheck` the memo invariants in `aa933
 sort sources and requires the radix sort to return the merge sort's permutation exactly;
 `MeshGrowthCheck` the vertex-count units of `ChunkMeshBufferBuilder.grow()`; `FacingOrderCheck`
 the visible-facings-first layout, its merged draws and its rebase after an arena move.
+
+## Performance (2026-10-16)
+
+Measured in the Linggango Developer Version pack on an RX 9070 XT, 3440x1440, render distance
+12, at a fixed spot in a dense taiga, with an in-game A/B harness that switches one code path
+every second and times frames, terrain CPU and per-pass GPU time with timestamp queries. The
+harness is the local branch `perf-bench`; it is never merged.
+
+What the numbers say about this card's GL driver:
+
+- Each multidraw command costs about 68 ns of GPU time regardless of size. Without shaders that
+  makes the command count the main terrain cost, which is why merging and the visible-first
+  layout pay off there.
+- With Complementary the frame is about 8.6 ms of GPU time, 5.8 ms of it the main view's opaque
+  terrain and only ~0.13 ms the shadow pass. It is pixel shading, not vertices: switching block
+  face culling off added only ~0.2 ms. Drawing the same terrain far-to-near cost 2.8 ms more, so
+  draw order is the lever there.
+
+Measured and rejected:
+
+| Experiment | Result |
+|---|---|
+| `glMultiDrawElementsIndirect` instead of the direct multidraw | +0.05 ms GPU, 842 to 809 fps. Slower on this driver. |
+| CUTOUT pass before SOLID | +0.12 ms GPU |
+| SOLID and CUTOUT interleaved per region | half the gain of the distance bands, for the same CPU |
+| Distance bands without a shader pack | no measurable change, +0.03 ms CPU |
+
+The "shaders went from ~350 to ~100 fps" report was scenery, not code: Emberlens 1.8.3 (the
+build that ran on 2026-10-05) and 1.8.4 measure the same at the fixed spot, the Oculus and
+Complementary settings match the 2026-10-05 snapshot, and the same spot runs at 264 fps looking
+at the ground instead of into the forest.
 
 ## Video settings GUI
 
