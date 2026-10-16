@@ -21,6 +21,7 @@ import me.jellysquid.mods.sodium.client.render.chunk.terrain.TerrainRenderPass;
 import me.jellysquid.mods.sodium.client.render.chunk.vertex.format.ChunkVertexType;
 import me.jellysquid.mods.sodium.client.render.viewport.CameraTransform;
 import me.jellysquid.mods.sodium.client.util.BitwiseMath;
+import org.embeddedt.embeddium.render.ShaderModBridge;
 import org.lwjgl.system.MemoryUtil;
 import java.util.Iterator;
 
@@ -60,6 +61,8 @@ public class DefaultChunkRenderer extends ShaderChunkRenderer {
 
         this.isIndexedPass = renderPass.isSorted();
 
+        boolean mergeDraws = !this.isIndexedPass && !ShaderModBridge.areShadersEnabled();
+
         while (iterator.hasNext()) {
             ChunkRenderList renderList = iterator.next();
 
@@ -70,7 +73,7 @@ public class DefaultChunkRenderer extends ShaderChunkRenderer {
                 continue;
             }
 
-            fillCommandBuffer(this.batch, region, storage, renderList, camera, renderPass, useBlockFaceCulling);
+            fillCommandBuffer(this.batch, region, storage, renderList, camera, renderPass, useBlockFaceCulling, mergeDraws);
 
             if (this.batch.isEmpty()) {
                 continue;
@@ -97,7 +100,8 @@ public class DefaultChunkRenderer extends ShaderChunkRenderer {
                                           ChunkRenderList renderList,
                                           CameraTransform camera,
                                           TerrainRenderPass pass,
-                                          boolean useBlockFaceCulling) {
+                                          boolean useBlockFaceCulling,
+                                          boolean mergeDraws) {
         batch.clear();
 
         var iterator = renderList.sectionsWithGeometryIterator(pass.isReverseOrder());
@@ -131,7 +135,13 @@ public class DefaultChunkRenderer extends ShaderChunkRenderer {
 
             slices &= SectionRenderDataUnsafe.getSliceMask(pMeshData);
 
-            if (slices != 0) {
+            if (slices == 0) {
+                continue;
+            }
+
+            if (mergeDraws) {
+                addMergedDrawCommands(batch, pMeshData, slices);
+            } else {
                 addDrawCommands(batch, pMeshData, slices, indexPointerMask);
             }
         }
@@ -151,6 +161,38 @@ public class DefaultChunkRenderer extends ShaderChunkRenderer {
             MemoryUtil.memPutAddress(pElementPointer + (size << 3), SectionRenderDataUnsafe.getIndexOffset(pMeshData, facing) & indexPointerMask);
 
             size += (mask >> facing) & 1;
+        }
+
+        batch.size = size;
+    }
+
+    private static void addMergedDrawCommands(MultiDrawBatch batch, long pMeshData, int mask) {
+        final var pBaseVertex = batch.pBaseVertex;
+        final var pElementCount = batch.pElementCount;
+        final var pElementPointer = batch.pElementPointer;
+
+        int size = batch.size;
+        int end = -1;
+
+        for (int facing = 0; facing < ModelQuadFacing.COUNT; facing++) {
+            if (((mask >> facing) & 1) == 0) {
+                continue;
+            }
+
+            int vertexOffset = SectionRenderDataUnsafe.getVertexOffset(pMeshData, facing);
+            int elementCount = SectionRenderDataUnsafe.getElementCount(pMeshData, facing);
+
+            if (vertexOffset == end) {
+                long pCount = pElementCount + ((size - 1) << 2);
+                MemoryUtil.memPutInt(pCount, MemoryUtil.memGetInt(pCount) + elementCount);
+            } else {
+                MemoryUtil.memPutInt(pBaseVertex + (size << 2), vertexOffset);
+                MemoryUtil.memPutInt(pElementCount + (size << 2), elementCount);
+                MemoryUtil.memPutAddress(pElementPointer + (size << 3), 0L);
+                size++;
+            }
+
+            end = vertexOffset + (elementCount / 6) * 4;
         }
 
         batch.size = size;
