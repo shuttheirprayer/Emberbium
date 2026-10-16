@@ -325,6 +325,10 @@ public class RenderSectionManager {
         commandList.flush();
     }
 
+    public void setSectionDistanceRange(int min, int max) {
+        this.chunkRenderer.setSectionDistanceRange(min, max);
+    }
+
     public void tickVisibleRenders() {
         Iterator<ChunkRenderList> it = this.renderLists.iterator();
 

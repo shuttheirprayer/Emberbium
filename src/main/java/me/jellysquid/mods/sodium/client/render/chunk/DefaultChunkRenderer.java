@@ -33,6 +33,9 @@ public class DefaultChunkRenderer extends ShaderChunkRenderer {
 
     private boolean isIndexedPass;
 
+    private int minSectionDistance = 0;
+    private int maxSectionDistance = Integer.MAX_VALUE;
+
     public DefaultChunkRenderer(RenderDevice device, ChunkVertexType vertexType) {
         super(device, vertexType);
 
@@ -72,7 +75,8 @@ public class DefaultChunkRenderer extends ShaderChunkRenderer {
                 continue;
             }
 
-            fillCommandBuffer(this.batch, region, storage, renderList, camera, renderPass, useBlockFaceCulling, mergeDraws);
+            fillCommandBuffer(this.batch, region, storage, renderList, camera, renderPass, useBlockFaceCulling, mergeDraws,
+                    this.minSectionDistance, this.maxSectionDistance);
 
             if (this.batch.isEmpty()) {
                 continue;
@@ -100,7 +104,9 @@ public class DefaultChunkRenderer extends ShaderChunkRenderer {
                                           CameraTransform camera,
                                           TerrainRenderPass pass,
                                           boolean useBlockFaceCulling,
-                                          boolean mergeDraws) {
+                                          boolean mergeDraws,
+                                          int minSectionDistance,
+                                          int maxSectionDistance) {
         batch.clear();
 
         var iterator = renderList.sectionsWithGeometryIterator(pass.isReverseOrder());
@@ -115,12 +121,25 @@ public class DefaultChunkRenderer extends ShaderChunkRenderer {
 
         int indexPointerMask = pass.isSorted() ? 0xFFFFFFFF : 0;
 
+        boolean filterByDistance = minSectionDistance > 0 || maxSectionDistance != Integer.MAX_VALUE;
+        int cameraSectionX = camera.intX >> 4;
+        int cameraSectionY = camera.intY >> 4;
+        int cameraSectionZ = camera.intZ >> 4;
+
         while (iterator.hasNext()) {
             int sectionIndex = iterator.nextByteAsInt();
 
             int chunkX = originX + LocalSectionIndex.unpackX(sectionIndex);
             int chunkY = originY + LocalSectionIndex.unpackY(sectionIndex);
             int chunkZ = originZ + LocalSectionIndex.unpackZ(sectionIndex);
+
+            if (filterByDistance) {
+                int distance = Math.max(Math.abs(chunkX - cameraSectionX), Math.max(Math.abs(chunkY - cameraSectionY), Math.abs(chunkZ - cameraSectionZ)));
+
+                if (distance < minSectionDistance || distance >= maxSectionDistance) {
+                    continue;
+                }
+            }
 
             var pMeshData = renderDataStorage.getDataPointer(sectionIndex);
 
@@ -290,6 +309,12 @@ public class DefaultChunkRenderer extends ShaderChunkRenderer {
         try (DrawCommandList drawCommandList = commandList.beginTessellating(tessellation)) {
             drawCommandList.multiDrawElementsBaseVertex(batch, GlIndexType.UNSIGNED_INT);
         }
+    }
+
+    @Override
+    public void setSectionDistanceRange(int min, int max) {
+        this.minSectionDistance = min;
+        this.maxSectionDistance = max;
     }
 
     @Override

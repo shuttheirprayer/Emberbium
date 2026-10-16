@@ -9,10 +9,11 @@ import java.lang.reflect.Method;
 public class ShaderModBridge {
     private static final MethodHandle SHADERS_ENABLED;
     private static final MethodHandle SHADERS_OPEN_SCREEN;
+    private static final MethodHandle SHADOW_PASS;
     private static final MethodHandle NVIDIUM_ENABLED;
 
     static {
-        MethodHandle shadersEnabled = null, shaderOpenScreen = null;
+        MethodHandle shadersEnabled = null, shaderOpenScreen = null, shadowPass = null;
         try {
             Class<?> irisApiClass = Class.forName("net.irisshaders.iris.api.v0.IrisApi");
             Method instanceGetter = irisApiClass.getDeclaredMethod("getInstance");
@@ -25,6 +26,13 @@ public class ShaderModBridge {
         }
         SHADERS_ENABLED = shadersEnabled;
         SHADERS_OPEN_SCREEN = shaderOpenScreen;
+        try {
+            Class<?> irisApiClass = Class.forName("net.irisshaders.iris.api.v0.IrisApi");
+            Object irisApiInstance = irisApiClass.getDeclaredMethod("getInstance").invoke(null);
+            shadowPass = MethodHandles.lookup().unreflect(irisApiClass.getDeclaredMethod("isRenderingShadowPass")).bindTo(irisApiInstance);
+        } catch (Throwable ignored) {
+        }
+        SHADOW_PASS = shadowPass;
         MethodHandle nvidiumEnabled = null;
         try {
             Class<?> nvidiumClass = Class.forName("me.cortex.nvidium.Nvidium");
@@ -50,6 +58,18 @@ public class ShaderModBridge {
         if(SHADERS_ENABLED != null) {
             try {
                 return (boolean)SHADERS_ENABLED.invokeExact();
+            } catch (Throwable e) {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+
+    public static boolean isRenderingShadowPass() {
+        if(SHADOW_PASS != null) {
+            try {
+                return (boolean)SHADOW_PASS.invokeExact();
             } catch (Throwable e) {
                 return false;
             }

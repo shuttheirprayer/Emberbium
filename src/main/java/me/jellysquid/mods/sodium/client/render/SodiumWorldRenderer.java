@@ -51,6 +51,7 @@ import net.minecraftforge.fml.loading.FMLLoader;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
+import org.embeddedt.embeddium.render.ShaderModBridge;
 
 /**
  * Provides an extension to vanilla's {@link LevelRenderer}.
@@ -253,13 +254,32 @@ public class SodiumWorldRenderer {
 
         List<TerrainRenderPass> passes = DefaultTerrainRenderPasses.RENDER_PASS_MAPPINGS.get(renderLayer);
 
-        if (passes != null) {
+        if (passes == null) {
+            return;
+        }
+
+        if (passes.size() > 1 && ShaderModBridge.areShadersEnabled() && !ShaderModBridge.isRenderingShadowPass()) {
+            try {
+                for (int band = 0; band + 1 < SECTION_DISTANCE_BANDS.length; band++) {
+                    this.renderSectionManager.setSectionDistanceRange(SECTION_DISTANCE_BANDS[band], SECTION_DISTANCE_BANDS[band + 1]);
+
+                    //noinspection ForLoopReplaceableByForEach
+                    for (int i = 0; i < passes.size(); i++) {
+                        this.renderSectionManager.renderLayer(matrices, passes.get(i), x, y, z);
+                    }
+                }
+            } finally {
+                this.renderSectionManager.setSectionDistanceRange(0, Integer.MAX_VALUE);
+            }
+        } else {
             //noinspection ForLoopReplaceableByForEach
             for (int i = 0; i < passes.size(); i++) {
                 this.renderSectionManager.renderLayer(matrices, passes.get(i), x, y, z);
             }
         }
     }
+
+    private static final int[] SECTION_DISTANCE_BANDS = { 0, 2, 4, 8, Integer.MAX_VALUE };
 
     public void reload() {
         if (this.world == null) {

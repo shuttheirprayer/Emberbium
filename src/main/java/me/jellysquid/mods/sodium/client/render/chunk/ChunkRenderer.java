@@ -27,6 +27,9 @@ public interface ChunkRenderer {
      */
     void delete(CommandList commandList);
 
+    default void setSectionDistanceRange(int min, int max) {
+    }
+
     /**
      * Get the vertex type used by this renderer.
      */
