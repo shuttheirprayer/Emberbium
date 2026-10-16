@@ -92,7 +92,8 @@ public class BlockRenderer {
     // Memoises the colour of the block currently being rendered. Every quad in one renderModel()
     // call shares ctx.world(), ctx.pos() and ctx.state(), and the only non-blended provider that can
     // reach here is DefaultColorProviders.VanillaAdapter -- ColorProviderRegistry has no way for a
-    // mod to install its own -- whose result then depends on nothing but the tint index, and which
+    // mod to install its own -- whose result then depends on nothing but the tint index and, for mods
+    // that redirect the call by sprite such as Copycats+ through COO, the quad's sprite, and which
     // fills all four vertices with one value. So for a model with several quads sharing a tint
     // index, every call after the first repeats work. BlendedColorProvider colours each vertex from
     // the quad's geometry and is never memoised.
@@ -101,6 +102,7 @@ public class BlockRenderer {
     // needs no synchronisation.
     private boolean hasCachedTint;
     private int cachedTintIndex;
+    private TextureAtlasSprite cachedTintSprite;
     private int cachedTintColor;
 
     private final boolean useRenderPassOptimization;
@@ -296,8 +298,9 @@ public class BlockRenderer {
         if (colorProvider != null && quad.hasColor()) {
             boolean cacheable = !(colorProvider instanceof BlendedColorProvider);
             int tintIndex = quad.getColorIndex();
+            TextureAtlasSprite sprite = quad.getSprite();
 
-            if (cacheable && this.hasCachedTint && tintIndex == this.cachedTintIndex) {
+            if (cacheable && this.hasCachedTint && tintIndex == this.cachedTintIndex && sprite == this.cachedTintSprite) {
                 Arrays.fill(vertexColors, this.cachedTintColor);
             } else {
                 colorProvider.getColors(ctx.world(), ctx.pos(), ctx.state(), quad, vertexColors);
@@ -305,6 +308,7 @@ public class BlockRenderer {
                 if (cacheable) {
                     this.hasCachedTint = true;
                     this.cachedTintIndex = tintIndex;
+                    this.cachedTintSprite = sprite;
                     this.cachedTintColor = vertexColors[0];
                 }
             }

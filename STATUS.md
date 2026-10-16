@@ -59,7 +59,7 @@ javac checks/MeshGrowthCheck.java -d /tmp && java -ea -cp /tmp MeshGrowthCheck
 ```
 
 `DrainCheck` covers the drain logic in `d9018065`; `CoplanarCheck` the length handling and the
-allocation decision in `201967f2`; `TintMemoCheck` the memo invariants in `aa933934`;
+allocation decision in `201967f2`; `TintMemoCheck` the memo invariants in `aa933934`, including the sprite key;
 `AnimationCheck` the easing maths behind the GUI animations; `RadixSortCheck` compiles the real
 sort sources and requires the radix sort to return the merge sort's permutation exactly;
 `MeshGrowthCheck` the vertex-count units of `ChunkMeshBufferBuilder.grow()`.

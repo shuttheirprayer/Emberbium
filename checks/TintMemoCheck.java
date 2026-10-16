@@ -15,17 +15,17 @@ public class TintMemoCheck {
     /** Stand-in for ColorProvider. Counts calls so we can see what the memo skipped. */
     static abstract class Provider {
         int calls;
-        final void getColors(int pos, int tintIndex, int[] output) {
+        final void getColors(int pos, int tintIndex, int sprite, int[] output) {
             this.calls++;
-            this.fill(pos, tintIndex, output);
+            this.fill(pos, tintIndex, sprite, output);
         }
-        abstract void fill(int pos, int tintIndex, int[] output);
+        abstract void fill(int pos, int tintIndex, int sprite, int[] output);
     }
 
     /** DefaultColorProviders.VanillaAdapter: one colour for the whole quad, from (pos, tintIndex). */
     static class VanillaAdapter extends Provider {
         @Override
-        void fill(int pos, int tintIndex, int[] output) {
+        void fill(int pos, int tintIndex, int sprite, int[] output) {
             Arrays.fill(output, 0x10000 * pos + tintIndex);
         }
     }
@@ -33,10 +33,17 @@ public class TintMemoCheck {
     /** BlendedColorProvider: a different colour per vertex, so it can never be memoised. */
     static class Blended extends Provider {
         @Override
-        void fill(int pos, int tintIndex, int[] output) {
+        void fill(int pos, int tintIndex, int sprite, int[] output) {
             for (int i = 0; i < output.length; i++) {
                 output[i] = 0x10000 * pos + tintIndex + i;
             }
+        }
+    }
+
+    static class SpriteKeyed extends Provider {
+        @Override
+        void fill(int pos, int tintIndex, int sprite, int[] output) {
+            Arrays.fill(output, 0x10000 * pos + 0x100 * sprite + tintIndex);
         }
     }
 
@@ -44,9 +51,20 @@ public class TintMemoCheck {
     static class Renderer {
         final int[] quadColors = new int[4];
 
+        final boolean keyOnSprite;
+
         boolean hasCachedTint;
         int cachedTintIndex;
+        int cachedTintSprite;
         int cachedTintColor;
+
+        Renderer() {
+            this(true);
+        }
+
+        Renderer(boolean keyOnSprite) {
+            this.keyOnSprite = keyOnSprite;
+        }
 
         /** renderModel(): the memo is dropped for every block. */
         void beginBlock() {
@@ -55,18 +73,23 @@ public class TintMemoCheck {
 
         /** getVertexColors(), for a quad that has a colour. */
         int[] getVertexColors(int pos, Provider colorProvider, int tintIndex) {
+            return this.getVertexColors(pos, colorProvider, tintIndex, 0);
+        }
+
+        int[] getVertexColors(int pos, Provider colorProvider, int tintIndex, int sprite) {
             final int[] vertexColors = this.quadColors;
 
             boolean cacheable = !(colorProvider instanceof Blended);
 
-            if (cacheable && this.hasCachedTint && tintIndex == this.cachedTintIndex) {
+            if (cacheable && this.hasCachedTint && tintIndex == this.cachedTintIndex && (!this.keyOnSprite || sprite == this.cachedTintSprite)) {
                 Arrays.fill(vertexColors, this.cachedTintColor);
             } else {
-                colorProvider.getColors(pos, tintIndex, vertexColors);
+                colorProvider.getColors(pos, tintIndex, sprite, vertexColors);
 
                 if (cacheable) {
                     this.hasCachedTint = true;
                     this.cachedTintIndex = tintIndex;
+                    this.cachedTintSprite = sprite;
                     this.cachedTintColor = vertexColors[0];
                 }
             }
@@ -81,8 +104,12 @@ public class TintMemoCheck {
 
     /** What upstream produced, for every case: always ask the provider. */
     static int[] uncached(int pos, Provider p, int tintIndex) {
+        return uncached(pos, p, tintIndex, 0);
+    }
+
+    static int[] uncached(int pos, Provider p, int tintIndex, int sprite) {
         int[] out = new int[4];
-        p.fill(pos, tintIndex, out);
+        p.fill(pos, tintIndex, sprite, out);
         for (int i = 0; i < out.length; i++) {
             out[i] |= 0xFF000000;
         }
@@ -136,6 +163,23 @@ public class TintMemoCheck {
         }
         assert blended.calls == 6 : "a blended provider must be asked for every quad, asked " + blended.calls;
         assert !rb.hasCachedTint : "a blended provider must never populate the memo";
+
+        Renderer rs = new Renderer();
+        SpriteKeyed copycat = new SpriteKeyed();
+        rs.beginBlock();
+        int[] partA = rs.getVertexColors(9, copycat, 0, 1).clone();
+        int[] partB = rs.getVertexColors(9, copycat, 0, 2).clone();
+        int[] partBAgain = rs.getVertexColors(9, copycat, 0, 2).clone();
+        assert Arrays.equals(partA, uncached(9, copycat, 0, 1)) : "the first part must get its own colour";
+        assert Arrays.equals(partB, uncached(9, copycat, 0, 2)) : "a part with another sprite at the same tint must get its own colour";
+        assert Arrays.equals(partBAgain, partB) : "a repeated sprite must be served from the memo with the same colour";
+        assert copycat.calls == 2 : "two sprites at one tint should ask the provider twice, asked " + copycat.calls;
+
+        Renderer tintOnly = new Renderer(false);
+        tintOnly.beginBlock();
+        tintOnly.getVertexColors(9, copycat, 0, 1);
+        int[] stale = tintOnly.getVertexColors(9, copycat, 0, 2);
+        assert !Arrays.equals(stale, uncached(9, copycat, 0, 2)) : "keyed on the tint alone, the second part must get the first part's colour";
 
         System.out.println("TintMemoCheck: all assertions passed");
     }
