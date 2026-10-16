@@ -26,6 +26,7 @@ import java.util.List;
  */
 public class ChunkBuildBuffers {
     private static final ModelQuadFacing[] ONLY_UNASSIGNED = new ModelQuadFacing[] { ModelQuadFacing.UNASSIGNED };
+    private static final ModelQuadFacing[][] VISIBLE_FIRST = createVisibleFirstOrders();
     private final Reference2ReferenceOpenHashMap<TerrainRenderPass, BakedChunkModelBuilder> builders = new Reference2ReferenceOpenHashMap<>();
 
     private final ChunkVertexType vertexType;
@@ -64,6 +65,10 @@ public class ChunkBuildBuffers {
      * times to return multiple copies.
      */
     public BuiltSectionMeshParts createMesh(TerrainRenderPass pass) {
+        return this.createMesh(pass, ModelQuadFacing.ALL);
+    }
+
+    public BuiltSectionMeshParts createMesh(TerrainRenderPass pass, int visibleFaces) {
         var builder = this.builders.get(pass);
 
         List<ByteBuffer> vertexBuffers = new ArrayList<>();
@@ -71,7 +76,7 @@ public class ChunkBuildBuffers {
 
         int vertexCount = 0;
 
-        ModelQuadFacing[] facingsToUpload = pass.isSorted() ? ONLY_UNASSIGNED : ModelQuadFacing.VALUES;
+        ModelQuadFacing[] facingsToUpload = pass.isSorted() ? ONLY_UNASSIGNED : VISIBLE_FIRST[visibleFaces & ModelQuadFacing.ALL];
         TranslucentQuadAnalyzer.SortState sortState = pass.isSorted() ? builder.getVertexBuffer(ModelQuadFacing.UNASSIGNED).getSortState() : null;
 
         for (ModelQuadFacing facing : facingsToUpload) {
@@ -124,6 +129,31 @@ public class ChunkBuildBuffers {
         }
 
         return new BuiltSectionMeshParts(mergedBuffer, mergedIndexBuffer, sortState, vertexRanges);
+    }
+
+    private static ModelQuadFacing[][] createVisibleFirstOrders() {
+        ModelQuadFacing[][] orders = new ModelQuadFacing[ModelQuadFacing.ALL + 1][];
+
+        for (int visible = 0; visible <= ModelQuadFacing.ALL; visible++) {
+            ModelQuadFacing[] order = new ModelQuadFacing[ModelQuadFacing.COUNT];
+            int next = 0;
+
+            for (ModelQuadFacing facing : ModelQuadFacing.VALUES) {
+                if ((visible & (1 << facing.ordinal())) != 0) {
+                    order[next++] = facing;
+                }
+            }
+
+            for (ModelQuadFacing facing : ModelQuadFacing.VALUES) {
+                if ((visible & (1 << facing.ordinal())) == 0) {
+                    order[next++] = facing;
+                }
+            }
+
+            orders[visible] = order;
+        }
+
+        return orders;
     }
 
     public void destroy() {

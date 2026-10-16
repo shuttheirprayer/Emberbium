@@ -172,8 +172,11 @@ public class DefaultChunkRenderer extends ShaderChunkRenderer {
 
         int size = batch.size;
         int end = -1;
+        int order = SectionRenderDataUnsafe.getFacingOrder(pMeshData);
 
-        for (int facing = 0; facing < ModelQuadFacing.COUNT; facing++) {
+        for (int i = 0; i < ModelQuadFacing.COUNT; i++) {
+            int facing = (order >>> (i * 3)) & 7;
+
             if (((mask >> facing) & 1) == 0) {
                 continue;
             }
@@ -206,7 +209,7 @@ public class DefaultChunkRenderer extends ShaderChunkRenderer {
     private static final int MODEL_NEG_Y      = ModelQuadFacing.NEG_Y.ordinal();
     private static final int MODEL_NEG_Z      = ModelQuadFacing.NEG_Z.ordinal();
 
-    private static int getVisibleFaces(int originX, int originY, int originZ, int chunkX, int chunkY, int chunkZ) {
+    public static int getVisibleFaces(int originX, int originY, int originZ, int chunkX, int chunkY, int chunkZ) {
         // This is carefully written so that we can keep everything branch-less.
         //
         // Normally, this would be a ridiculous way to handle the problem. But the Hotspot VM's

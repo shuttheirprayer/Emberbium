@@ -17,12 +17,14 @@ import org.lwjgl.system.MemoryUtil;
 // three times slower than the most naive solution in literally any other language that LLVM can compile.
 //
 // Memory layout:
-// u64 slice_mask;
+// u32 slice_mask;
+// u32 facing_order;
 // u32 vertex_offset;
 // u32 element_count;
 // u32 index_offset;
 public class SectionRenderDataUnsafe {
     private static final long OFFSET_SLICE_MASK = 0;
+    private static final long OFFSET_FACING_ORDER = 4;
     private static final long OFFSET_SLICE_RANGES = 8;
 
     private static final long DATA_PER_FACING_SIZE = 12;
@@ -52,6 +54,14 @@ public class SectionRenderDataUnsafe {
 
     public static int getSliceMask(long ptr) {
         return MemoryUtil.memGetInt(ptr + OFFSET_SLICE_MASK);
+    }
+
+    public static void setFacingOrder(long ptr, int value) {
+        MemoryUtil.memPutInt(ptr + OFFSET_FACING_ORDER, value);
+    }
+
+    public static int getFacingOrder(long ptr) {
+        return MemoryUtil.memGetInt(ptr + OFFSET_FACING_ORDER);
     }
 
     public static void setVertexOffset(long ptr, int facing, int value) {

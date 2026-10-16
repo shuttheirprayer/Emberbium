@@ -36,22 +36,25 @@ public class SectionRenderDataStorage {
         var pMeshData = this.getDataPointer(localSectionIndex);
 
         int sliceMask = 0;
-        int vertexOffset = allocation.getOffset();
+        int baseVertex = allocation.getOffset();
         int indexOffset = indexAllocation != null ? indexAllocation.getOffset() * 4 : 0;
 
         for (int facingIndex = 0; facingIndex < ModelQuadFacing.COUNT; facingIndex++) {
             VertexRange vertexRange = ranges[facingIndex];
+            int vertexStart;
             int vertexCount;
 
             if (vertexRange != null) {
+                vertexStart = vertexRange.vertexStart();
                 vertexCount = vertexRange.vertexCount();
             } else {
+                vertexStart = 0;
                 vertexCount = 0;
             }
 
             int indexCount = (vertexCount >> 2) * 6;
 
-            SectionRenderDataUnsafe.setVertexOffset(pMeshData, facingIndex, vertexOffset);
+            SectionRenderDataUnsafe.setVertexOffset(pMeshData, facingIndex, baseVertex + vertexStart);
             SectionRenderDataUnsafe.setElementCount(pMeshData, facingIndex, indexCount);
             SectionRenderDataUnsafe.setIndexOffset(pMeshData, facingIndex, indexOffset);
 
@@ -59,11 +62,49 @@ public class SectionRenderDataStorage {
                 sliceMask |= 1 << facingIndex;
             }
 
-            vertexOffset += vertexCount;
             indexOffset += indexCount * 4;
         }
 
         SectionRenderDataUnsafe.setSliceMask(pMeshData, sliceMask);
+        SectionRenderDataUnsafe.setFacingOrder(pMeshData, getFacingOrder(ranges));
+    }
+
+    static int getFacingOrder(VertexRange[] ranges) {
+        int[] facings = new int[ModelQuadFacing.COUNT];
+        int count = 0;
+
+        for (int facing = 0; facing < ModelQuadFacing.COUNT; facing++) {
+            VertexRange range = ranges[facing];
+
+            if (range == null || range.vertexCount() == 0) {
+                continue;
+            }
+
+            int position = count++;
+
+            while (position > 0 && ranges[facings[position - 1]].vertexStart() > range.vertexStart()) {
+                facings[position] = facings[position - 1];
+                position--;
+            }
+
+            facings[position] = facing;
+        }
+
+        for (int facing = 0; facing < ModelQuadFacing.COUNT; facing++) {
+            VertexRange range = ranges[facing];
+
+            if (range == null || range.vertexCount() == 0) {
+                facings[count++] = facing;
+            }
+        }
+
+        int order = 0;
+
+        for (int i = 0; i < ModelQuadFacing.COUNT; i++) {
+            order |= facings[i] << (i * 3);
+        }
+
+        return order;
     }
 
     public void removeMeshes(int localSectionIndex) {
@@ -119,14 +160,18 @@ public class SectionRenderDataStorage {
         var indexOffset = indexAllocation != null ? indexAllocation.getOffset() * 4 : 0;
 
         var data = this.getDataPointer(sectionIndex);
+        int order = SectionRenderDataUnsafe.getFacingOrder(data);
+
+        for (int i = 0; i < ModelQuadFacing.COUNT; i++) {
+            int facing = (order >>> (i * 3)) & 7;
+
+            SectionRenderDataUnsafe.setVertexOffset(data, facing, vertexOffset);
+            vertexOffset += (SectionRenderDataUnsafe.getElementCount(data, facing) / 6) * 4; // convert elements back into vertices
+        }
 
         for (int facing = 0; facing < ModelQuadFacing.COUNT; facing++) {
-            SectionRenderDataUnsafe.setVertexOffset(data, facing, vertexOffset);
             SectionRenderDataUnsafe.setIndexOffset(data, facing, indexOffset);
-
-            var indexCount = SectionRenderDataUnsafe.getElementCount(data, facing);
-            vertexOffset += (indexCount / 6) * 4; // convert elements back into vertices
-            indexOffset += indexCount * 4;
+            indexOffset += SectionRenderDataUnsafe.getElementCount(data, facing) * 4;
         }
     }
 
