@@ -269,12 +269,16 @@ public class GlBufferArena {
     }
 
     public boolean upload(CommandList commandList, Stream<PendingUpload> stream) {
+        // A linked list is used as we'll be randomly removing elements and want O(1) performance
+        LinkedList<PendingUpload> queue = stream.collect(Collectors.toCollection(LinkedList::new));
+
+        return this.upload(commandList, queue);
+    }
+
+    public boolean upload(CommandList commandList, LinkedList<PendingUpload> queue) {
         // Record the buffer object before we start any work
         // If the arena needs to re-allocate a buffer, this will allow us to check and return an appropriate flag
         GlBuffer buffer = this.arenaBuffer;
-
-        // A linked list is used as we'll be randomly removing elements and want O(1) performance
-        List<PendingUpload> queue = stream.collect(Collectors.toCollection(LinkedList::new));
 
         // Try to upload all of the data into free segments first
         this.tryUploads(commandList, queue);
