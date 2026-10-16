@@ -37,7 +37,7 @@ public class ChunkMeshBufferBuilder {
         var vertexCount = vertices.length;
 
         if (this.count + vertexCount >= this.capacity) {
-            this.grow(this.stride * vertexCount);
+            this.grow(vertexCount);
         }
 
         long ptr = MemoryUtil.memAddress(this.buffer, this.count * this.stride);
@@ -60,7 +60,7 @@ public class ChunkMeshBufferBuilder {
         int cap = Math.max(this.capacity * 2, this.capacity + len);
 
         // Update the buffer and capacity now
-        this.setBufferSize(cap * this.stride);
+        this.setBufferSize(cap);
     }
 
     private void setBufferSize(int capacity) {

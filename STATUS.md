@@ -55,12 +55,14 @@ javac checks/CoplanarCheck.java -d /tmp && java -ea -cp /tmp CoplanarCheck
 javac checks/TintMemoCheck.java -d /tmp && java -ea -cp /tmp TintMemoCheck
 javac checks/AnimationCheck.java -d /tmp && java -ea -cp /tmp AnimationCheck
 javac -d /tmp/rs src/main/java/me/jellysquid/mods/sodium/client/util/sorting/{AbstractSort,InsertionSort,MergeSort,RadixSort}.java checks/RadixSortCheck.java && java -ea -cp /tmp/rs RadixSortCheck
+javac checks/MeshGrowthCheck.java -d /tmp && java -ea -cp /tmp MeshGrowthCheck
 ```
 
 `DrainCheck` covers the drain logic in `d9018065`; `CoplanarCheck` the length handling and the
 allocation decision in `201967f2`; `TintMemoCheck` the memo invariants in `aa933934`;
 `AnimationCheck` the easing maths behind the GUI animations; `RadixSortCheck` compiles the real
-sort sources and requires the radix sort to return the merge sort's permutation exactly.
+sort sources and requires the radix sort to return the merge sort's permutation exactly;
+`MeshGrowthCheck` the vertex-count units of `ChunkMeshBufferBuilder.grow()`.
 
 ## Video settings GUI
 
