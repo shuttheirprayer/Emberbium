@@ -22,6 +22,8 @@ public class VertexSorters {
     }
 
     private static abstract class AbstractVertexSorter implements VertexSorting {
+        private static final int RADIX_SORT_THRESHOLD = 256;
+
         @Override
         public final int[] sort(Vector3f[] positions) {
             return this.mergeSort(positions);
@@ -32,6 +34,10 @@ public class VertexSorters {
 
             for (int index = 0; index < positions.length; index++) {
                 keys[index] = this.getKey(positions[index]);
+            }
+
+            if (keys.length >= RADIX_SORT_THRESHOLD) {
+                return RadixSort.radixSortDescending(keys);
             }
 
             return MergeSort.mergeSort(keys);
