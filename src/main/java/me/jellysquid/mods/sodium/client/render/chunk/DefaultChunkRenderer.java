@@ -21,7 +21,6 @@ import me.jellysquid.mods.sodium.client.render.chunk.terrain.TerrainRenderPass;
 import me.jellysquid.mods.sodium.client.render.chunk.vertex.format.ChunkVertexType;
 import me.jellysquid.mods.sodium.client.render.viewport.CameraTransform;
 import me.jellysquid.mods.sodium.client.util.BitwiseMath;
-import org.embeddedt.embeddium.render.ShaderModBridge;
 import org.lwjgl.system.MemoryUtil;
 import java.util.Iterator;
 
@@ -61,7 +60,7 @@ public class DefaultChunkRenderer extends ShaderChunkRenderer {
 
         this.isIndexedPass = renderPass.isSorted();
 
-        boolean mergeDraws = !this.isIndexedPass && !ShaderModBridge.areShadersEnabled();
+        boolean mergeDraws = !this.isIndexedPass;
 
         while (iterator.hasNext()) {
             ChunkRenderList renderList = iterator.next();
