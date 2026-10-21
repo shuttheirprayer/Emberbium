@@ -1,18 +1,7 @@
 import java.util.Arrays;
 
-/**
- * Standalone check of org.embeddedt.embeddium.gui.animation.Animation.
- *
- * The property worth pinning down is frame-rate independence: the same elapsed time must produce
- * the same result whether it arrives as one long frame or many short ones. A fixed per-frame factor
- * -- the obvious "simplification" of this code -- passes a casual look and animates at a different
- * speed on every machine.
- *
- *   javac checks/AnimationCheck.java -d /tmp && java -ea -cp /tmp AnimationCheck
- */
 public class AnimationCheck {
 
-    /** Animation, transcribed, with the clock passed in instead of read from Util.getMillis(). */
     static class Anim {
         private static final long RESYNC_THRESHOLD_MILLIS = 250L;
         private static final float EPSILON = 0.001f;
@@ -90,21 +79,18 @@ public class AnimationCheck {
     }
 
     public static void main(String[] args) {
-        // --- first read adopts the target rather than animating from nowhere ---
         Anim a = new Anim(50f, 0f);
         a.setTarget(1f);
         assert a.get(1000) == 1f : "the first read must adopt the target, got " + a.get(1000);
 
-        // --- one half-life covers half the remaining distance ---
         Anim b = new Anim(50f, 0f);
-        b.get(1000);            // establish the clock
+        b.get(1000);
         b.setTarget(1f);
         float afterOne = b.get(1050);
         assert Math.abs(afterOne - 0.5f) < 0.01f : "one half-life should cover half the gap, got " + afterOne;
         float afterTwo = b.get(1100);
         assert Math.abs(afterTwo - 0.75f) < 0.01f : "two half-lives should cover three quarters, got " + afterTwo;
 
-        // --- THE property: one long frame equals many short ones over the same span ---
         Anim coarse = new Anim(50f, 0f);
         coarse.get(0);
         coarse.setTarget(1f);
@@ -121,13 +107,11 @@ public class AnimationCheck {
         assert Math.abs(oneStep - manySteps) < 0.02f
                 : "frame rate must not change the result: 1 step gave " + oneStep + ", 15 steps gave " + manySteps;
 
-        // --- a long gap (screen was hidden) snaps instead of playing a stale animation ---
         Anim hidden = new Anim(50f, 0f);
         hidden.get(0);
         hidden.setTarget(1f);
         assert hidden.get(5000) == 1f : "a gap longer than the resync threshold must snap";
 
-        // --- reversing mid-flight just chases the new target, no restart artefact ---
         Anim rev = new Anim(50f, 0f);
         rev.get(0);
         rev.setTarget(1f);
@@ -138,7 +122,6 @@ public class AnimationCheck {
         assert back < mid : "after reversing, the value must head back down: " + mid + " -> " + back;
         assert back > 0f : "and must not jump straight to the target";
 
-        // --- restartFrom displaces without cancelling, unlike snapTo ---
         Anim slide = new Anim(50f, 0f);
         slide.setTarget(0f);
         slide.restartFrom(10f, 1000);
@@ -150,12 +133,10 @@ public class AnimationCheck {
         snapped.setTarget(0f);
         assert snapped.get(1000) == 0f : "snapTo cancels the animation, so the next read adopts the target";
 
-        // --- colour helpers ---
         assert lerpColor(0xFF000000, 0xFFFFFFFF, 0f) == 0xFF000000 : "t=0 is the start colour";
         assert lerpColor(0xFF000000, 0xFFFFFFFF, 1f) == 0xFFFFFFFF : "t=1 is the end colour";
         assert lerpColor(0xFF000000, 0xFFFFFFFF, 0.5f) == 0xFF808080 : "midpoint should be mid grey, got "
                 + Integer.toHexString(lerpColor(0xFF000000, 0xFFFFFFFF, 0.5f));
-        // alpha is interpolated too -- the option rows fade between 0x90 and 0xE0 backgrounds
         assert (lerpColor(0x90000000, 0xE0202020, 0.5f) >>> 24) == 0xB8 : "alpha must interpolate, got "
                 + Integer.toHexString(lerpColor(0x90000000, 0xE0202020, 0.5f) >>> 24);
 
@@ -165,10 +146,6 @@ public class AnimationCheck {
         assert scaleAlpha(0xFF123456, 2f) == 0xFF123456 : "factor above 1 is clamped, not wrapped";
         assert scaleAlpha(0xFF123456, -1f) == 0x00123456 : "negative factor is clamped to zero";
 
-        // --- the text alpha floor ---
-        // Minecraft's Font does: (color & 0xFC000000) == 0 ? color | 0xFF000000 : color
-        // so any alpha below 4 comes out fully opaque. A fade that runs to zero therefore flashes
-        // the text solid on its last frame, which is exactly the bug this floor exists to avoid.
         assert !isTextVisible(0f) : "a fully faded value must not be drawn";
         assert !isTextVisible(3f / 255f) : "alpha 3 is inside the opaque-fixup range";
         assert isTextVisible(4f / 255f) : "alpha 4 is the first safe value";

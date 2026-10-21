@@ -24,6 +24,8 @@ public class ChunkShaderInterface {
     // The fog shader component used by this program in order to setup the appropriate GL state
     private final ChunkShaderFogComponent fogShader;
 
+    private boolean samplerUnitsUploaded;
+
     public ChunkShaderInterface(ShaderBindingContext context, ChunkShaderOptions options) {
         this.uniformModelViewMatrix = context.bindUniform("u_ModelViewMatrix", GlUniformMatrix4f::new);
         this.uniformProjectionMatrix = context.bindUniform("u_ProjectionMatrix", GlUniformMatrix4f::new);
@@ -41,6 +43,8 @@ public class ChunkShaderInterface {
         this.bindTexture(ChunkShaderTextureSlot.BLOCK, TextureUtil.getBlockTextureId());
         this.bindTexture(ChunkShaderTextureSlot.LIGHT, TextureUtil.getLightTextureId());
 
+        this.samplerUnitsUploaded = true;
+
         this.fogShader.setup();
     }
 
@@ -49,8 +53,10 @@ public class ChunkShaderInterface {
         GlStateManager._activeTexture(GL32C.GL_TEXTURE0 + slot.ordinal());
         GlStateManager._bindTexture(textureId);
 
-        var uniform = this.uniformTextures.get(slot);
-        uniform.setInt(slot.ordinal());
+        if (!this.samplerUnitsUploaded) {
+            var uniform = this.uniformTextures.get(slot);
+            uniform.setInt(slot.ordinal());
+        }
     }
 
     public void setProjectionMatrix(Matrix4fc matrix) {

@@ -55,8 +55,6 @@ public class FlatButtonWidget extends AbstractWidget implements Renderable {
         this.hovered = this.isHovered(mouseX, mouseY);
 
         float hover = this.hoverFade.towards(this.enabled && this.hovered);
-        // Apply and Undo flip between enabled and disabled every time a setting is touched, which
-        // was the most visible hard swap left on the screen.
         float enabledFade = this.enableFade.towards(this.enabled);
 
         int backgroundColor = Animation.lerpColor(this.style.bgDisabled,
@@ -74,8 +72,6 @@ public class FlatButtonWidget extends AbstractWidget implements Renderable {
         }
         this.drawString(drawContext, this.label, textX, this.dim.getCenterY() - 4, textColor);
 
-        // The selection marker grows out from the middle of the edge it sits on, rather than
-        // appearing whole. Kept on the same edges and at the same thickness as before.
         float selectedFade = this.selectGrow.towards(this.enabled && this.selected);
 
         if (selectedFade > 0.0f) {

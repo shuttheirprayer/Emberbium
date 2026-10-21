@@ -89,17 +89,7 @@ public class BlockRenderer {
 
     private final ChunkColorWriter colorEncoder = ChunkColorWriter.get();
 
-    // Memoises the colour of the block currently being rendered. Every quad in one renderModel()
-    // call shares ctx.world(), ctx.pos() and ctx.state(), and the only non-blended provider that can
-    // reach here is DefaultColorProviders.VanillaAdapter -- ColorProviderRegistry has no way for a
-    // mod to install its own -- whose result then depends on nothing but the tint index and, for mods
-    // that redirect the call by sprite such as Copycats+ through COO, the quad's sprite, and which
-    // fills all four vertices with one value. So for a model with several quads sharing a tint
-    // index, every call after the first repeats work. BlendedColorProvider colours each vertex from
-    // the quad's geometry and is never memoised.
     //
-    // A BlockRenderer belongs to one ChunkBuildContext, which belongs to one worker thread, so this
-    // needs no synchronisation.
     private boolean hasCachedTint;
     private int cachedTintIndex;
     private TextureAtlasSprite cachedTintSprite;

@@ -1,6 +1,7 @@
 package me.jellysquid.mods.sodium.mixin.features.shader.uniform;
 
 import com.mojang.blaze3d.shaders.Uniform;
+import me.jellysquid.mods.sodium.client.gl.shader.uniform.UniformSnapshot;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import org.spongepowered.asm.mixin.Final;
@@ -60,9 +61,16 @@ public class ShaderProgramMixin {
     @Redirect(method = "apply", at = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/ShaderInstance;uniforms:Ljava/util/List;", ordinal = 0))
     private List<Uniform> uploadUniforms(ShaderInstance instance) {
         List<Uniform> uniforms = this.uniforms;
+        boolean skipUnchanged = instance.getClass() == ShaderInstance.class;
         //noinspection ForLoopReplaceableByForEach
         for(int i = 0; i < uniforms.size(); i++) {
-            uniforms.get(i).upload();
+            Uniform uniform = uniforms.get(i);
+
+            if (skipUnchanged && ((UniformSnapshot) uniform).sodium$matchesLastUpload()) {
+                continue;
+            }
+
+            uniform.upload();
         }
         return Collections.emptyList();
     }

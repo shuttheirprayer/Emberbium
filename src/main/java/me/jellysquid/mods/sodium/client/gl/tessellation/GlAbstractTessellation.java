@@ -28,22 +28,17 @@ public abstract class GlAbstractTessellation implements GlTessellation {
         int vao = this.getArrayHandle();
 
         if (vertexFunctions.usesSeparateFormat()) {
-            // GL 4.3+ path: separate attribute format from buffer binding
             int bindingIndex = 0;
             for (TessellationBinding binding : this.bindings) {
                 GlVertexAttributeBinding[] attribs = binding.attributeBindings();
 
                 if (binding.target() == GlBufferTarget.ELEMENT_BUFFER) {
-                    // Element buffer binding
                     vertexFunctions.bindElementBuffer(vao, binding.buffer());
                 } else if (attribs.length > 0) {
-                    // Vertex buffer binding
-                    // Set up attribute formats (only needs to be done once per VAO)
                     for (GlVertexAttributeBinding attrib : attribs) {
                         vertexFunctions.setupVertexAttribute(vao, attrib, bindingIndex);
                     }
 
-                    // Bind the vertex buffer to the binding point
                     int stride = attribs[0].getStride();
                     vertexFunctions.bindVertexBuffer(vao, bindingIndex, binding.buffer(), 0, stride);
 
@@ -51,7 +46,6 @@ public abstract class GlAbstractTessellation implements GlTessellation {
                 }
             }
         } else {
-            // Legacy path: coupled attribute format and buffer binding
             for (TessellationBinding binding : this.bindings) {
                 commandList.bindBuffer(binding.target(), binding.buffer());
 

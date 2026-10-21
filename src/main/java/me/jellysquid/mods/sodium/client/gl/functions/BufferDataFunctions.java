@@ -14,16 +14,7 @@ import org.lwjgl.opengl.GLCapabilities;
 
 import java.nio.ByteBuffer;
 
-/**
- * Abstraction layer for buffer data operations.
- * Uses Direct State Access (DSA) on GL 4.5+ for reduced binding overhead,
- * falls back to traditional bind-then-operate on older GL versions.
- */
 public enum BufferDataFunctions {
-    /**
-     * GL 4.5+ Direct State Access path.
-     * Operates directly on buffer handles without binding.
-     */
     DSA {
         @Override
         public void bufferData(int buffer, ByteBuffer data, GlBufferUsage usage) {
@@ -66,10 +57,6 @@ public enum BufferDataFunctions {
         }
     },
 
-    /**
-     * Legacy bind-then-operate path for GL < 4.5.
-     * Requires buffer to be bound before operations.
-     */
     BINDING {
         @Override
         public void bufferData(int buffer, ByteBuffer data, GlBufferUsage usage) {
@@ -121,9 +108,6 @@ public enum BufferDataFunctions {
     };
 
     public static BufferDataFunctions pickBest(RenderDevice device) {
-        // Emberbium: DSA is opt-out. It rewrites every buffer and VAO operation in the
-        // renderer, and its benefit is unverified on any given driver, so keep an escape
-        // hatch that restores exactly the upstream path.
         if (!SodiumClientMod.canUseModernGlPaths()) {
             return BINDING;
         }

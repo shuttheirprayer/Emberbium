@@ -80,12 +80,8 @@ public class SliderControl implements Control<Integer> {
         public void render(GuiGraphics drawContext, int mouseX, int mouseY, float delta) {
             super.render(drawContext, mouseX, mouseY, delta);
 
-            // The row swapped instantly between the bare value and the full slider. Cross-fade the
-            // two instead: they occupy the same box, so one fades out as the other fades in.
             float shown = this.reveal.towards(this.option.isAvailable() && (this.hovered || this.isFocused()));
 
-            // Both halves are text, so neither may be drawn below MIN_TEXT_ALPHA -- Minecraft would
-            // render it fully opaque and the value would flash back into view as it faded out.
             if (Animation.isTextVisible(1.0f - shown)) {
                 this.renderStandaloneValue(drawContext, 1.0f - shown);
             }
@@ -122,8 +118,6 @@ public class SliderControl implements Control<Integer> {
 
             int color = Animation.scaleAlpha(0xFFFFFFFF, alpha);
 
-            // The track wipes out from the thumb as the slider appears, so it draws the eye to the
-            // handle rather than snapping a full-width line into place.
             float wipe = Animation.smoothstep(alpha);
             int trackLeft = Math.round(thumbX + THUMB_WIDTH - (thumbX + THUMB_WIDTH - sliderX) * wipe);
             int trackRight = Math.round(thumbX + THUMB_WIDTH + ((sliderX + sliderWidth) - (thumbX + THUMB_WIDTH)) * wipe);

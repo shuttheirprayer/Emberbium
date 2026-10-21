@@ -29,7 +29,6 @@ public class TabFrame extends AbstractFrame {
     private final AtomicReference<Integer> tabSectionScrollBarOffset;
     private Tab<?> selectedTab;
 
-    /** How far the incoming page is displaced when a tab is selected, in pixels. */
     private static final float TAB_SLIDE_DISTANCE = 10.0f;
 
     private final Animation tabSlide = new Animation(55.0f, 0.0f);
@@ -69,7 +68,6 @@ public class TabFrame extends AbstractFrame {
     }
 
     public void setTab(Tab<?> tab) {
-        // Clicking the tab that is already open is not a transition, so it must not replay one.
         boolean changed = this.selectedTab != tab;
 
         this.selectedTab = tab;
@@ -184,9 +182,6 @@ public class TabFrame extends AbstractFrame {
             }
         }
         if(this.selectedFrame != null) {
-            // A newly selected page settles in from the right instead of appearing in place. The
-            // cursor is shifted by the same amount so hit-testing follows what is drawn; once the
-            // slide is over both are zero and this costs a comparison.
             float slide = this.tabSlide.get();
 
             if (slide != 0.0f) {

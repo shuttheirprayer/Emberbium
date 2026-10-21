@@ -17,8 +17,6 @@ import org.lwjgl.system.MemoryUtil;
 // three times slower than the most naive solution in literally any other language that LLVM can compile.
 //
 // Memory layout:
-// u32 slice_mask;
-// u32 facing_order;
 // u32 vertex_offset;
 // u32 element_count;
 // u32 index_offset;

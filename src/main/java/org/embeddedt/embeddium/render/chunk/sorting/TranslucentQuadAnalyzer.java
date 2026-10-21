@@ -108,13 +108,9 @@ public class TranslucentQuadAnalyzer {
             } else {
                 // If all quads are on the same plane we can use NONE sorting, otherwise we need to sort statically to put
                 // them in the right order
-                // The plane test only reads the centers, so hand it the list's backing array rather than a copy.
-                // elements() may be longer than the list, hence the explicit length.
                 sortLevel = areAllQuadsOnSamePlane(quadCenters.elements(), quadCenters.size()) ? Level.NONE : Level.STATIC;
             }
 
-            // Only a state that keeps the centers needs its own copy of them; NONE discards them, and
-            // the list is cleared (and reused for the next section) on the way out.
             SortState finalState = sortLevel == Level.NONE ? SortState.NONE : new SortState(sortLevel, quadCenters.toArray(new float[0]), cloneBits(normalSigns), new Vector3f(globalNormal));
             clear();
             return finalState;

@@ -10,8 +10,6 @@ public abstract class GlBuffer extends GlObject {
     private GlBufferMapping activeMapping;
 
     protected GlBuffer() {
-        // Use glCreateBuffers on GL 4.5+ for DSA compatibility.
-        // glGenBuffers only reserves a name; glCreateBuffers creates a real buffer object.
         if (GL.getCapabilities().OpenGL45 && SodiumClientMod.canUseModernGlPaths()) {
             this.setHandle(GL45C.glCreateBuffers());
         } else {

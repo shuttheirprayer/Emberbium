@@ -106,8 +106,6 @@ public class CyclingControl<T extends Enum<T>> implements Control<T> {
                 name = Component.empty().append(name).withStyle(ChatFormatting.GRAY, ChatFormatting.STRIKETHROUGH);
             }
 
-            // Watching the drawn value rather than hooking cycleControl catches every way it can
-            // change -- cycling, undo, another option making this one available again.
             int ordinal = value.ordinal();
 
             if (this.lastDrawnOrdinal != -1 && this.lastDrawnOrdinal != ordinal) {
@@ -117,9 +115,6 @@ public class CyclingControl<T extends Enum<T>> implements Control<T> {
 
             this.lastDrawnOrdinal = ordinal;
 
-            // The new value arrives dimmed and slightly out from the edge, then settles into place.
-            // Only ever one string on screen, so no overlapping glyphs, and the floor keeps it well
-            // clear of MIN_TEXT_ALPHA.
             float settle = Animation.smoothstep(this.valueSettle.get());
 
             int strWidth = this.getStringWidth(name);

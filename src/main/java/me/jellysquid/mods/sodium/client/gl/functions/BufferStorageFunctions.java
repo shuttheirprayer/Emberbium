@@ -28,9 +28,6 @@ public enum BufferStorageFunctions {
             return false;
         }
     },
-    /**
-     * GL 4.5+ Direct State Access path for buffer storage creation.
-     */
     DSA {
         @Override
         public void createBufferStorage(GlBufferTarget target, long length, EnumBitField<GlBufferStorageFlags> flags) {
@@ -55,7 +52,6 @@ public enum BufferStorageFunctions {
 
         @Override
         public void createBufferStorage(int buffer, long length, EnumBitField<GlBufferStorageFlags> flags) {
-            // Fallback: bind then create storage
             GL44C.glBindBuffer(GlBufferTarget.ARRAY_BUFFER.getTargetParameter(), buffer);
             GL44C.glBufferStorage(GlBufferTarget.ARRAY_BUFFER.getTargetParameter(), length, flags.getBitField());
         }
@@ -73,7 +69,6 @@ public enum BufferStorageFunctions {
 
         @Override
         public void createBufferStorage(int buffer, long length, EnumBitField<GlBufferStorageFlags> flags) {
-            // Fallback: bind then create storage
             GL20C.glBindBuffer(GlBufferTarget.ARRAY_BUFFER.getTargetParameter(), buffer);
             ARBBufferStorage.glBufferStorage(GlBufferTarget.ARRAY_BUFFER.getTargetParameter(), length, flags.getBitField());
         }
@@ -87,7 +82,6 @@ public enum BufferStorageFunctions {
     public static BufferStorageFunctions pickBest(RenderDevice device) {
         GLCapabilities capabilities = device.getCapabilities();
 
-        // Emberbium: with modern paths off, fall through to the pre-existing non-DSA ladder.
         boolean dsa = SodiumClientMod.canUseModernGlPaths();
 
         if (dsa && capabilities.OpenGL45) {
@@ -103,10 +97,6 @@ public enum BufferStorageFunctions {
 
     public abstract void createBufferStorage(GlBufferTarget target, long length, EnumBitField<GlBufferStorageFlags> flags);
 
-    /**
-     * Direct State Access variant - creates buffer storage without binding.
-     * On non-DSA paths, this will bind the buffer first.
-     */
     public abstract void createBufferStorage(int buffer, long length, EnumBitField<GlBufferStorageFlags> flags);
 
     public abstract boolean isDSA();

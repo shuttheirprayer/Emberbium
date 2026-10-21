@@ -58,8 +58,6 @@ public class SodiumGameOptions {
     public static class AdvancedSettings {
         public boolean enableMemoryTracing = false;
         public boolean useAdvancedStagingBuffers = true;
-        // Off by default: the DSA and separate-attribute-format paths are newer than anything
-        // upstream ships, and their benefit on any given driver is still unmeasured. Opt in.
         public boolean useModernGlPaths = false;
         public boolean disableIncompatibleModWarnings = false;
 

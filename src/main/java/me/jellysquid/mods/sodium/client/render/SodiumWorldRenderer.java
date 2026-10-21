@@ -8,6 +8,7 @@ import com.mojang.blaze3d.vertex.SheetedDecalTextureGenerator;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexMultiConsumer;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Reference2ReferenceOpenHashMap;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.gl.device.CommandList;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
@@ -252,10 +253,16 @@ public class SodiumWorldRenderer {
     public void drawChunkLayer(RenderType renderLayer, PoseStack matrixStack, double x, double y, double z) {
         ChunkRenderMatrices matrices = ChunkRenderMatrices.from(matrixStack);
 
-        List<TerrainRenderPass> passes = DefaultTerrainRenderPasses.RENDER_PASS_MAPPINGS.get(renderLayer);
+        List<TerrainRenderPass> passes = this.renderPassCache.get(renderLayer);
 
         if (passes == null) {
-            return;
+            passes = DefaultTerrainRenderPasses.RENDER_PASS_MAPPINGS.get(renderLayer);
+
+            if (passes == null) {
+                return;
+            }
+
+            this.renderPassCache.put(renderLayer, passes);
         }
 
         if (passes.size() > 1 && ShaderModBridge.areShadersEnabled() && !ShaderModBridge.isRenderingShadowPass()) {
@@ -278,6 +285,8 @@ public class SodiumWorldRenderer {
             }
         }
     }
+
+    private final Reference2ReferenceOpenHashMap<RenderType, List<TerrainRenderPass>> renderPassCache = new Reference2ReferenceOpenHashMap<>();
 
     private static final int[] SECTION_DISTANCE_BANDS = { 0, 2, 4, 8, Integer.MAX_VALUE };
 
@@ -582,13 +591,7 @@ public class SodiumWorldRenderer {
             return true;
         }
 
-        // Ensure entities with outlines or nametags are always visible
-        if (this.client.shouldEntityAppearGlowing(entity) || entity.shouldShowName()) {
-            return true;
-        }
-
         AABB box = entity.getBoundingBoxForCulling();
-
 
         if (isInfiniteExtentsBox(box)) {
             return true;
@@ -601,7 +604,12 @@ public class SodiumWorldRenderer {
             return true;
         }
 
-        return this.isBoxVisible(box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ);
+        if (this.isBoxVisible(box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ)) {
+            return true;
+        }
+
+        // Ensure entities with outlines or nametags are always visible
+        return this.client.shouldEntityAppearGlowing(entity) || entity.shouldShowName();
     }
 
     public boolean isBoxVisible(double x1, double y1, double z1, double x2, double y2, double z2) {

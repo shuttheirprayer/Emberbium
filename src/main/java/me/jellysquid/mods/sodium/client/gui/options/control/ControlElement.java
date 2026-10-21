@@ -51,7 +51,6 @@ public class ControlElement<T> extends AbstractWidget {
         float hover = this.hoverFade.towards(this.hovered);
 
         this.drawRect(drawContext, this.dim.x(), this.dim.y(), this.dim.getLimitX(), this.dim.getLimitY(), Animation.lerpColor(style.bgDefault, style.bgHovered, hover));
-        // Hovering also nudges the label in from the edge, which reads as the row lifting.
         this.drawString(drawContext, label, this.dim.x() + 6 + Math.round(2.0f * Animation.smoothstep(hover)), this.dim.getCenterY() - 4, style.textDefault);
 
         if (this.isFocused()) {

@@ -54,8 +54,6 @@ public class TickBoxControl implements Control<Boolean> {
             final boolean enabled = this.option.isAvailable();
             final boolean ticked = this.option.getValue();
 
-            // The fill scales out of the centre of the box and the border takes on the accent
-            // colour over the same beat, so toggling reads as one motion rather than a flash.
             final float filled = this.tick.towards(ticked);
 
             final int color;
@@ -70,7 +68,6 @@ public class TickBoxControl implements Control<Boolean> {
                 float grow = Animation.smoothstep(filled);
                 float centerX = (x + w) / 2.0f;
                 float centerY = (y + h) / 2.0f;
-                // Half the extent of the fully drawn fill, which spans the box inset by 2px a side.
                 float halfW = ((w - 2) - (x + 2)) / 2.0f * grow;
                 float halfH = ((h - 2) - (y + 2)) / 2.0f * grow;
 

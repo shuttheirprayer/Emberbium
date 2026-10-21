@@ -474,10 +474,6 @@ public class RenderSectionManager {
         ArrayList<ChunkBuildOutput> results = new ArrayList<>();
         RuntimeException failure = null;
 
-        // Drain the whole queue before propagating anything. unwrap() rethrows for a job that
-        // failed, and letting that escape mid-drain would strand every output already polled --
-        // nothing else holds a reference, so their NativeBuffers would only come back via the
-        // PhantomReference reclaimer.
         ChunkJobResult<ChunkBuildOutput> result;
 
         while ((result = this.buildResults.poll()) != null) {
@@ -493,8 +489,6 @@ public class RenderSectionManager {
         }
 
         if (failure != null) {
-            // Release what did succeed, then propagate as before. ReportedException still
-            // reaches the crash report; it just no longer costs us the rest of the batch.
             for (var output : results) {
                 output.delete();
             }
@@ -589,10 +583,6 @@ public class RenderSectionManager {
                 result.delete(); // delete resources for any pending tasks (including those that were cancelled)
             }
         } finally {
-            // A chunk build that failed earlier must not cost us the teardown below. Region
-            // storage is allocated with nmemCalloc in SectionRenderDataUnsafe and has no
-            // reclaimer behind it, unlike NativeBuffer, so skipping this leaks it for the rest
-            // of the process. World unload runs on every dimension change and disconnect.
             this.sectionsWithGlobalEntities.clear();
             this.resetRenderLists();
 

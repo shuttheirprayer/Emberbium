@@ -1,18 +1,7 @@
 import java.util.Arrays;
 
-/**
- * Standalone check of the per-block tint memo in BlockRenderer.getVertexColors().
- *
- * The memo is only sound because of three things the real code relies on and this check pins down:
- * a blended provider is never memoised, a differing tint index is never served from the memo, and
- * the memo is dropped between blocks -- otherwise one block's colour bleeds into the next, which is
- * the kind of thing that only shows up as a wrong tint on someone else's screen.
- *
- *   javac checks/TintMemoCheck.java -d /tmp && java -ea -cp /tmp TintMemoCheck
- */
 public class TintMemoCheck {
 
-    /** Stand-in for ColorProvider. Counts calls so we can see what the memo skipped. */
     static abstract class Provider {
         int calls;
         final void getColors(int pos, int tintIndex, int sprite, int[] output) {
@@ -22,7 +11,6 @@ public class TintMemoCheck {
         abstract void fill(int pos, int tintIndex, int sprite, int[] output);
     }
 
-    /** DefaultColorProviders.VanillaAdapter: one colour for the whole quad, from (pos, tintIndex). */
     static class VanillaAdapter extends Provider {
         @Override
         void fill(int pos, int tintIndex, int sprite, int[] output) {
@@ -30,7 +18,6 @@ public class TintMemoCheck {
         }
     }
 
-    /** BlendedColorProvider: a different colour per vertex, so it can never be memoised. */
     static class Blended extends Provider {
         @Override
         void fill(int pos, int tintIndex, int sprite, int[] output) {
@@ -47,7 +34,6 @@ public class TintMemoCheck {
         }
     }
 
-    /** The patched BlockRenderer, transcribed down to the parts the memo touches. */
     static class Renderer {
         final int[] quadColors = new int[4];
 
@@ -66,12 +52,10 @@ public class TintMemoCheck {
             this.keyOnSprite = keyOnSprite;
         }
 
-        /** renderModel(): the memo is dropped for every block. */
         void beginBlock() {
             this.hasCachedTint = false;
         }
 
-        /** getVertexColors(), for a quad that has a colour. */
         int[] getVertexColors(int pos, Provider colorProvider, int tintIndex) {
             return this.getVertexColors(pos, colorProvider, tintIndex, 0);
         }
@@ -102,7 +86,6 @@ public class TintMemoCheck {
         }
     }
 
-    /** What upstream produced, for every case: always ask the provider. */
     static int[] uncached(int pos, Provider p, int tintIndex) {
         return uncached(pos, p, tintIndex, 0);
     }
@@ -117,7 +100,6 @@ public class TintMemoCheck {
     }
 
     public static void main(String[] args) {
-        // --- the win: one block, six quads, same tint -> one provider call, same colours ---
         Renderer r = new Renderer();
         VanillaAdapter vanilla = new VanillaAdapter();
         int[] expected = uncached(42, vanilla, 0);
@@ -130,7 +112,6 @@ public class TintMemoCheck {
         }
         assert vanilla.calls == 1 : "six quads at one tint should ask the provider once, asked " + vanilla.calls;
 
-        // --- a different tint index within the same block must not reuse the memo ---
         vanilla.calls = 0;
         int[] tint0 = r.getVertexColors(42, vanilla, 0).clone();
         int[] tint1 = r.getVertexColors(42, vanilla, 1).clone();
@@ -138,21 +119,18 @@ public class TintMemoCheck {
         assert !Arrays.equals(tint0, tint1) : "different tint indices must give different colours";
         assert Arrays.equals(tint1, uncached(42, vanilla, 1)) : "tint 1 must match the uncached colour";
 
-        // --- the regression that matters: the memo must not survive into the next block ---
         r.beginBlock();
         vanilla.calls = 0;
         int[] next = r.getVertexColors(43, vanilla, 1);
         assert vanilla.calls == 1 : "a new block must ask the provider again, calls=" + vanilla.calls;
         assert Arrays.equals(next, uncached(43, vanilla, 1)) : "a new block must get its own colour, not the last block's";
 
-        // and with the reset removed, it would be wrong -- proving the assertion above can fail
         Renderer leaky = new Renderer();
         leaky.beginBlock();
         leaky.getVertexColors(42, vanilla, 1);
-        int[] leaked = leaky.getVertexColors(43, vanilla, 1); // no beginBlock()
+        int[] leaked = leaky.getVertexColors(43, vanilla, 1);
         assert !Arrays.equals(leaked, uncached(43, vanilla, 1)) : "without the per-block reset this must be the wrong colour";
 
-        // --- blended providers are never memoised, and keep their per-vertex values ---
         Renderer rb = new Renderer();
         Blended blended = new Blended();
         rb.beginBlock();

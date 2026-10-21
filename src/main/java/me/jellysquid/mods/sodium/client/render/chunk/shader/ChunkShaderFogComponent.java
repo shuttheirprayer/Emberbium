@@ -5,6 +5,8 @@ import me.jellysquid.mods.sodium.client.gl.shader.uniform.GlUniformFloat;
 import me.jellysquid.mods.sodium.client.gl.shader.uniform.GlUniformFloat4v;
 import me.jellysquid.mods.sodium.client.gl.shader.uniform.GlUniformInt;
 
+import java.util.Arrays;
+
 /**
  * These shader implementations try to remain compatible with the deprecated fixed function pipeline by manually
  * copying the state into each shader's uniforms. The shader code itself is a straight-forward implementation of the
@@ -36,6 +38,12 @@ public abstract class ChunkShaderFogComponent {
         private final GlUniformFloat uFogStart;
         private final GlUniformFloat uFogEnd;
 
+        private final float[] lastFogColor = new float[4];
+        private int lastFogShape;
+        private float lastFogStart;
+        private float lastFogEnd;
+        private boolean fogUploaded;
+
         public Smooth(ShaderBindingContext context) {
             this.uFogColor = context.bindUniform("u_FogColor", GlUniformFloat4v::new);
             this.uFogShape = context.bindUniform("u_FogShape", GlUniformInt::new);
@@ -45,11 +53,27 @@ public abstract class ChunkShaderFogComponent {
 
         @Override
         public void setup() {
-            this.uFogColor.set(RenderSystem.getShaderFogColor());
-            this.uFogShape.set(RenderSystem.getShaderFogShape().getIndex());
+            float[] color = RenderSystem.getShaderFogColor();
+            int shape = RenderSystem.getShaderFogShape().getIndex();
+            float start = RenderSystem.getShaderFogStart();
+            float end = RenderSystem.getShaderFogEnd();
 
-            this.uFogStart.setFloat(RenderSystem.getShaderFogStart());
-            this.uFogEnd.setFloat(RenderSystem.getShaderFogEnd());
+            if (this.fogUploaded && shape == this.lastFogShape && start == this.lastFogStart && end == this.lastFogEnd
+                    && Arrays.equals(color, this.lastFogColor)) {
+                return;
+            }
+
+            this.uFogColor.set(color);
+            this.uFogShape.set(shape);
+
+            this.uFogStart.setFloat(start);
+            this.uFogEnd.setFloat(end);
+
+            System.arraycopy(color, 0, this.lastFogColor, 0, 4);
+            this.lastFogShape = shape;
+            this.lastFogStart = start;
+            this.lastFogEnd = end;
+            this.fogUploaded = true;
         }
     }
 
