@@ -1,5 +1,6 @@
 package me.jellysquid.mods.sodium.client.render.chunk.compile.tasks;
 
+import java.util.List;
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceOpenHashMap;
 import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.render.chunk.DefaultChunkRenderer;
@@ -134,7 +135,9 @@ public class ChunkBuilderMeshingTask extends ChunkBuilderTask<ChunkBuildOutput> 
 
                             random.setSeed(seed);
 
-                            for (RenderType layer : model.getRenderTypes(blockState, random, modelData)) {
+                            List<RenderType> layers = model.getRenderTypes(blockState, random, modelData).asList();
+                            for (int layerIndex = 0, layerCount = layers.size(); layerIndex < layerCount; layerIndex++) {
+                                RenderType layer = layers.get(layerIndex);
                                 context.update(blockPos, modelOffset, blockState, model, seed, modelData, layer);
                                 cache.getBlockRenderer()
                                         .renderModel(context, buffers);
