@@ -42,6 +42,14 @@ public class MinecraftClientMixin {
      * We run this at the beginning of the frame (except for the first frame) to give the previous frame plenty of time
      * to render on the GPU. This allows us to stall on ClientWaitSync for less time.
      */
+    @Inject(method = "tick", at = @At("HEAD"))
+    private void markVisibleSpritesForTick(CallbackInfo ci) {
+        var renderer = me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer.instanceNullable();
+        if (renderer != null) {
+            renderer.markVisibleSpritesForTick();
+        }
+    }
+
     @Inject(method = "runTick", at = @At("HEAD"))
     private void preRender(boolean tick, CallbackInfo ci) {
         ProfilerFiller profiler = Minecraft.getInstance().getProfiler();

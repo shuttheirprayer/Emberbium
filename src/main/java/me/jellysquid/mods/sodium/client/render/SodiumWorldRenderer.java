@@ -39,12 +39,18 @@ import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderDispatcher;
 import net.minecraft.client.resources.model.ModelBakery;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.SectionPos;
 import net.minecraft.server.level.BlockDestructionProgress;
 import net.minecraft.util.Mth;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.shapes.VoxelShape;
+import net.minecraftforge.common.extensions.IForgeBlockEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.fml.loading.FMLLoader;
@@ -233,13 +239,21 @@ public class SodiumWorldRenderer {
             this.renderSectionManager.uploadChunks();
         }
 
-        profiler.popPush("chunk_render_tick");
+        if (!SodiumClientMod.options().performance.animateOnlyVisibleTextures) {
+            profiler.popPush("chunk_render_tick");
 
-        this.renderSectionManager.tickVisibleRenders();
+            this.renderSectionManager.tickVisibleRenders();
+        }
 
         profiler.pop();
 
         Entity.setViewScale(Mth.clamp((double) this.client.options.getEffectiveRenderDistance() / 8.0D, 1.0D, 2.5D) * this.client.options.entityDistanceScaling().get());
+    }
+
+    public void markVisibleSpritesForTick() {
+        if (this.renderSectionManager != null && SodiumClientMod.options().performance.animateOnlyVisibleTextures) {
+            this.renderSectionManager.tickVisibleRenders();
+        }
     }
 
     private void processChunkEvents() {
@@ -481,7 +495,7 @@ public class SodiumWorldRenderer {
                 }
 
                 for (BlockEntity blockEntity : blockEntities) {
-                    if(ENABLE_BLOCKENTITY_CULLING && !currentViewport.isBoxVisible(blockEntity.getRenderBoundingBox()))
+                    if(ENABLE_BLOCKENTITY_CULLING && !this.isBlockEntityInView(blockEntity))
                         continue;
 
                     if (blockEntity.hasCustomOutlineRendering(this.client.player)) {
@@ -511,7 +525,7 @@ public class SodiumWorldRenderer {
             }
 
             for (var blockEntity : blockEntities) {
-                if(ENABLE_BLOCKENTITY_CULLING && !currentViewport.isBoxVisible(blockEntity.getRenderBoundingBox()))
+                if(ENABLE_BLOCKENTITY_CULLING && !this.isBlockEntityInView(blockEntity))
                     continue;
 
                 if (blockEntity.hasCustomOutlineRendering(this.client.player)) {
@@ -573,6 +587,55 @@ public class SodiumWorldRenderer {
     }
 
 
+
+    private static final ClassValue<Boolean> CUSTOM_RENDER_BOX = new ClassValue<>() {
+        @Override
+        protected Boolean computeValue(Class<?> type) {
+            try {
+                return type.getMethod("getRenderBoundingBox").getDeclaringClass() != IForgeBlockEntity.class;
+            } catch (ReflectiveOperationException e) {
+                return Boolean.TRUE;
+            }
+        }
+    };
+
+    private boolean isBlockEntityInView(BlockEntity blockEntity) {
+        Viewport viewport = this.currentViewport;
+        BlockEntityRenderBoxKind cached = (BlockEntityRenderBoxKind) blockEntity;
+        byte kind = cached.embeddium$renderBoxKind();
+        if (kind == 0) {
+            kind = CUSTOM_RENDER_BOX.get(blockEntity.getClass()) ? (byte) 1 : (byte) 2;
+            cached.embeddium$setRenderBoxKind(kind);
+        }
+        if (kind == 1) {
+            return viewport.isBoxVisible(blockEntity.getRenderBoundingBox());
+        }
+        BlockState state = blockEntity.getBlockState();
+        Block block = state.getBlock();
+        BlockPos pos = blockEntity.getBlockPos();
+        int x = pos.getX(), y = pos.getY(), z = pos.getZ();
+        if (block == Blocks.ENCHANTING_TABLE) {
+            return viewport.isBoxVisibleExact(x, y, z, x + 1, y + 1, z + 1);
+        }
+        if (block == Blocks.CHEST || block == Blocks.TRAPPED_CHEST) {
+            return viewport.isBoxVisibleExact(x - 1, y, z - 1, x + 2, y + 2, z + 2);
+        }
+        if (block == null || block == Blocks.STRUCTURE_BLOCK || block == Blocks.BEACON) {
+            return true;
+        }
+        VoxelShape shape;
+        try {
+            shape = state.getCollisionShape(blockEntity.getLevel(), pos);
+            if (shape.isEmpty()) {
+                return true;
+            }
+            return viewport.isBoxVisibleExact(
+                    shape.min(Direction.Axis.X) + x, shape.min(Direction.Axis.Y) + y, shape.min(Direction.Axis.Z) + z,
+                    shape.max(Direction.Axis.X) + x, shape.max(Direction.Axis.Y) + y, shape.max(Direction.Axis.Z) + z);
+        } catch (Exception e) {
+            return viewport.isBoxVisibleExact(x - 1, y, z - 1, x + 1, y + 1, z + 1);
+        }
+    }
 
     // the volume of a section multiplied by the number of sections to be checked at most
     private static final double MAX_ENTITY_CHECK_VOLUME = 16 * 16 * 16 * 15;
