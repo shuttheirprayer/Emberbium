@@ -494,8 +494,12 @@ public class SodiumWorldRenderer {
                     continue;
                 }
 
+                boolean sectionInside = ENABLE_BLOCKENTITY_CULLING && this.currentViewport.isBoxInsideExact(
+                        renderSection.getOriginX() - SECTION_BOX_MARGIN, renderSection.getOriginY() - SECTION_BOX_MARGIN, renderSection.getOriginZ() - SECTION_BOX_MARGIN,
+                        renderSection.getOriginX() + 16 + SECTION_BOX_MARGIN, renderSection.getOriginY() + 16 + SECTION_BOX_MARGIN, renderSection.getOriginZ() + 16 + SECTION_BOX_MARGIN);
+
                 for (BlockEntity blockEntity : blockEntities) {
-                    if(ENABLE_BLOCKENTITY_CULLING && !this.isBlockEntityInView(blockEntity))
+                    if(ENABLE_BLOCKENTITY_CULLING && !this.isBlockEntityInView(blockEntity, sectionInside))
                         continue;
 
                     if (blockEntity.hasCustomOutlineRendering(this.client.player)) {
@@ -553,7 +557,7 @@ public class SodiumWorldRenderer {
         matrices.translate((double) pos.getX() - x, (double) pos.getY() - y, (double) pos.getZ() - z);
 
         MultiBufferSource consumer = immediate;
-        SortedSet<BlockDestructionProgress> breakingInfo = blockBreakingProgressions.get(pos.asLong());
+        SortedSet<BlockDestructionProgress> breakingInfo = blockBreakingProgressions.isEmpty() ? null : blockBreakingProgressions.get(pos.asLong());
 
         if (breakingInfo != null && !breakingInfo.isEmpty()) {
             int stage = breakingInfo.last().getProgress();
@@ -599,7 +603,13 @@ public class SodiumWorldRenderer {
         }
     };
 
+    private static final int SECTION_BOX_MARGIN = 2;
+
     private boolean isBlockEntityInView(BlockEntity blockEntity) {
+        return this.isBlockEntityInView(blockEntity, false);
+    }
+
+    private boolean isBlockEntityInView(BlockEntity blockEntity, boolean sectionInside) {
         Viewport viewport = this.currentViewport;
         BlockEntityRenderBoxKind cached = (BlockEntityRenderBoxKind) blockEntity;
         byte kind = cached.embeddium$renderBoxKind();
@@ -615,25 +625,42 @@ public class SodiumWorldRenderer {
         BlockPos pos = blockEntity.getBlockPos();
         int x = pos.getX(), y = pos.getY(), z = pos.getZ();
         if (block == Blocks.ENCHANTING_TABLE) {
-            return viewport.isBoxVisibleExact(x, y, z, x + 1, y + 1, z + 1);
+            return sectionInside || viewport.isBoxVisibleExact(x, y, z, x + 1, y + 1, z + 1);
         }
         if (block == Blocks.CHEST || block == Blocks.TRAPPED_CHEST) {
-            return viewport.isBoxVisibleExact(x - 1, y, z - 1, x + 2, y + 2, z + 2);
+            return sectionInside || viewport.isBoxVisibleExact(x - 1, y, z - 1, x + 2, y + 2, z + 2);
         }
         if (block == null || block == Blocks.STRUCTURE_BLOCK || block == Blocks.BEACON) {
             return true;
         }
-        VoxelShape shape;
+        double[] box = cached.embeddium$box();
+        if (box == null || cached.embeddium$boxState() != state) {
+            box = renderBoxOf(state, blockEntity, pos);
+            cached.embeddium$setBox(state, box);
+        }
+        if (box == ALWAYS_VISIBLE_BOX) {
+            return true;
+        }
+        if (sectionInside && box[0] >= -SECTION_BOX_MARGIN && box[1] >= -SECTION_BOX_MARGIN && box[2] >= -SECTION_BOX_MARGIN
+                && box[3] <= 1 + SECTION_BOX_MARGIN && box[4] <= 1 + SECTION_BOX_MARGIN && box[5] <= 1 + SECTION_BOX_MARGIN) {
+            return true;
+        }
+        return viewport.isBoxVisibleExact(box[0] + x, box[1] + y, box[2] + z, box[3] + x, box[4] + y, box[5] + z);
+    }
+
+    private static final double[] ALWAYS_VISIBLE_BOX = new double[0];
+
+    private static double[] renderBoxOf(BlockState state, BlockEntity blockEntity, BlockPos pos) {
         try {
-            shape = state.getCollisionShape(blockEntity.getLevel(), pos);
+            VoxelShape shape = state.getCollisionShape(blockEntity.getLevel(), pos);
             if (shape.isEmpty()) {
-                return true;
+                return ALWAYS_VISIBLE_BOX;
             }
-            return viewport.isBoxVisibleExact(
-                    shape.min(Direction.Axis.X) + x, shape.min(Direction.Axis.Y) + y, shape.min(Direction.Axis.Z) + z,
-                    shape.max(Direction.Axis.X) + x, shape.max(Direction.Axis.Y) + y, shape.max(Direction.Axis.Z) + z);
+            return new double[]{
+                    Math.min(0.0, shape.min(Direction.Axis.X)), Math.min(0.0, shape.min(Direction.Axis.Y)), Math.min(0.0, shape.min(Direction.Axis.Z)),
+                    Math.max(1.0, shape.max(Direction.Axis.X)), Math.max(1.0, shape.max(Direction.Axis.Y)), Math.max(1.0, shape.max(Direction.Axis.Z))};
         } catch (Exception e) {
-            return viewport.isBoxVisibleExact(x - 1, y, z - 1, x + 1, y + 1, z + 1);
+            return new double[]{-1.0, 0.0, -1.0, 1.0, 1.0, 1.0};
         }
     }
 

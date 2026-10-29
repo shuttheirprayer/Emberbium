@@ -42,6 +42,17 @@ public final class Viewport {
         );
     }
 
+    public boolean isBoxInsideExact(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
+        return this.frustum.containsAab(
+                (float)(minX - this.transform.intX) - this.transform.fracX,
+                (float)(minY - this.transform.intY) - this.transform.fracY,
+                (float)(minZ - this.transform.intZ) - this.transform.fracZ,
+                (float)(maxX - this.transform.intX) - this.transform.fracX,
+                (float)(maxY - this.transform.intY) - this.transform.fracY,
+                (float)(maxZ - this.transform.intZ) - this.transform.fracZ
+        );
+    }
+
     public boolean isBoxVisibleExact(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
         return this.frustum.testAab(
                 (float)(minX - this.transform.intX) - this.transform.fracX,
