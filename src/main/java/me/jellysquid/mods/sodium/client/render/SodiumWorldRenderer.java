@@ -597,7 +597,7 @@ public class SodiumWorldRenderer {
         protected Boolean computeValue(Class<?> type) {
             try {
                 return type.getMethod("getRenderBoundingBox").getDeclaringClass() != IForgeBlockEntity.class;
-            } catch (ReflectiveOperationException e) {
+            } catch (ReflectiveOperationException | LinkageError e) {
                 return Boolean.TRUE;
             }
         }
